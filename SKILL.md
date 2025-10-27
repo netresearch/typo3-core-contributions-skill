@@ -1,0 +1,715 @@
+---
+name: typo3-core-contributions
+description: Guide contributors through the complete TYPO3 Core contribution workflow from account setup to patch submission. Use this skill when working with TYPO3 Forge issues (forge.typo3.org/issues/*), preparing patches for TYPO3 Core, or when users mention contributing to TYPO3, submitting patches to Gerrit, or fixing TYPO3 bugs. Handles account verification, environment setup with DDEV, commit message formatting, and Gerrit review workflows.
+---
+
+# TYPO3 Core Contributions
+
+## Overview
+
+Guide contributors through the complete TYPO3 Core contribution process, from initial setup through patch submission and review. Handle both new contributors starting from scratch and experienced contributors working on specific patches.
+
+## When to Use This Skill
+
+Activate when the user:
+- Provides a TYPO3 Forge issue URL (e.g., `https://forge.typo3.org/issues/105737`)
+- Mentions contributing to TYPO3 Core, submitting patches, or fixing TYPO3 bugs
+- Needs help with Gerrit review workflow, rebasing, or patch updates
+- Wants to create a new Forge issue for a bug or feature
+- Requests TYPO3 development environment setup
+- Asks about TYPO3 commit message format or contribution guidelines
+
+## Scope: Core Code vs. Documentation
+
+**This skill covers**: TYPO3 Core code contributions (PHP, JavaScript, CSS, tests)
+- Submission via Gerrit (review.typo3.org)
+- Uses Git commit-msg hooks
+- Forge issue tracking
+- CI/CD via GitLab
+
+**Not covered by this skill**: TYPO3 Documentation contributions
+- **For documentation work**, use the dedicated skill:
+  - **Extension Docs**: https://github.com/netresearch/typo3-docs-skill
+  - **Core Docs**: TYPO3CMS-Guide-ContributionWorkflow repository
+- **Different workflow**: GitHub Pull Requests (not Gerrit)
+- **Different format**: reStructuredText (.rst files)
+- **Different repository**: typo3-documentation/* GitHub organization
+
+**Example from real experience**:
+```
+✅ Core code fix → This skill → Gerrit submission
+❌ Documentation fix → typo3-docs-skill → GitHub PR
+```
+
+When we fixed issue #105737, we:
+1. Used **this skill** to submit the Core code patch via Gerrit
+2. Discovered docs error in commit message guide
+3. Should have used **typo3-docs-skill** for the documentation PR
+4. Submitted GitHub PR to TYPO3CMS-Guide-ContributionWorkflow
+
+**If user requests documentation work**: Inform them about the separate workflow and recommend the typo3-docs-skill.
+
+## Workflow Decision Tree
+
+Determine the user's current state and guide accordingly:
+
+```
+User starts contribution workflow
+├─ Has Forge issue URL?
+│  ├─ Yes → Proceed to Prerequisites Check
+│  └─ No → Guide to Issue Creation Phase
+├─ Prerequisites verified?
+│  ├─ Yes → Proceed to Development Phase
+│  └─ No → Guide through Setup Phase
+├─ Patch ready?
+│  ├─ Yes → Proceed to Submission Phase
+│  └─ No → Guide through Development Phase
+└─ Patch submitted?
+   ├─ Yes → Guide through Review & Update Phase
+   └─ No → Prepare for Gerrit submission
+```
+
+## Prerequisites Check
+
+Before beginning any contribution work, verify the user has:
+
+1. **Required Accounts**:
+   - TYPO3.org account (my.typo3.org)
+   - Gerrit account with SSH keys (review.typo3.org)
+   - Slack access (typo3.slack.com) for #typo3-cms-coredev channel
+
+2. **Development Environment**:
+   - Git configured with TYPO3 settings
+   - TYPO3 Core repository cloned
+   - DDEV-based development environment (preferred)
+   - Git hooks installed (commit-msg, pre-commit)
+
+3. **Skill Integrations**:
+   - `typo3-ddev-skill` for environment management
+   - `typo3-docs-skill` for documentation contributions (optional)
+   - `typo3-conformance-skill` for code quality checks (optional)
+
+Run `scripts/verify-prerequisites.sh` to check all prerequisites. If any are missing, proceed to the Setup Phase.
+
+**⚠️ Critical Email Requirement**: Your Git email MUST match one of your registered Gerrit emails or all pushes will be rejected:
+- Check registered emails: https://review.typo3.org/settings#EmailAddresses
+- Verify Git config: `git config user.email`
+- If mismatch, update Git: `git config user.email "your-registered@email.com"`
+- This verification is included in `verify-prerequisites.sh`
+
+## Phase 1: Account Setup
+
+### Check Existing Accounts
+
+Ask the user:
+- "Do you have a TYPO3.org account?"
+- "Have you set up Gerrit SSH access?"
+- "Are you in the TYPO3 Slack workspace?"
+
+### Guide Account Creation
+
+If accounts are missing, load `references/account-setup.md` for detailed instructions:
+
+**TYPO3.org Account**:
+- Visit https://my.typo3.org/index.php?id=2
+- Register with username, email, full name, and strong password
+- Verify email
+- This account provides access to Forge and Gerrit
+
+**Gerrit SSH Setup**:
+- Sign in to https://review.typo3.org with TYPO3.org credentials
+- Generate SSH key pair (platform-specific instructions in reference)
+- Add public key to Gerrit: Profile → SSH Keys
+- Test connection: `ssh -p 29418 <username>@review.typo3.org`
+
+**Slack Access**:
+- Join TYPO3 Slack: https://typo3.slack.com
+- Required channel: #typo3-cms-coredev
+- Optional channels: #typo3-cms, #random
+
+Verify completion before proceeding to next phase.
+
+## Phase 2: Environment Setup
+
+### Quick Setup Options
+
+**Option 1: Automated Setup (Recommended for Beginners)**
+```bash
+./scripts/setup-typo3-coredev.sh
+```
+Interactive script that guides through complete setup. See below for details.
+
+**Option 2: Use typo3-ddev-skill**
+```
+Use typo3-ddev-skill for complete DDEV setup
+```
+If available, use the typo3-ddev-skill for guided setup.
+
+**Option 3: Manual Setup**
+Follow the comprehensive workflow in `references/ddev-setup-workflow.md` for step-by-step instructions.
+
+### Automated Setup Script
+
+The `scripts/setup-typo3-coredev.sh` script provides complete automated setup:
+
+**What it does**:
+- Checks prerequisites (Git, DDEV, Docker)
+- Gathers configuration (project name, credentials, PHP version)
+- Clones TYPO3 Core repository
+- Configures Git for Gerrit submissions
+- Sets up DDEV with optimal settings
+- Installs dependencies and TYPO3
+- Activates development extensions
+- Generates test data (optional)
+
+**Usage**:
+```bash
+cd /path/to/your/projects/
+./path/to/scripts/setup-typo3-coredev.sh
+```
+
+**Interactive prompts**:
+- Project name (e.g., t3coredev-14-php8-4)
+- Your name for Git commits
+- Your email
+- Gerrit username
+- PHP version (8.2, 8.3, 8.4)
+- Timezone
+- TYPO3 admin password
+
+The script handles all configuration and creates a fully functional development environment.
+
+### Manual DDEV Setup (If Automation Not Suitable)
+
+If `typo3-ddev-skill` is not available and you prefer manual setup:
+
+**Clone TYPO3 Repository**:
+```bash
+mkdir typo3-contribution && cd typo3-contribution
+git clone git@github.com:typo3/typo3.git .
+```
+
+**Configure Git for TYPO3**:
+```bash
+# User identity (required)
+git config user.name "Your Name"
+git config user.email "your-email@example.org"
+
+# Auto-rebase (required)
+git config branch.autosetuprebase remote
+
+# Gerrit push configuration (required)
+git config remote.origin.pushurl ssh://<USERNAME>@review.typo3.org:29418/Packages/TYPO3.CMS.git
+git config remote.origin.push +refs/heads/main:refs/for/main
+```
+
+**Install Git Hooks**:
+```bash
+composer gerrit:setup
+```
+
+Or manually copy from `Build/git-hooks/` to `.git/hooks/` and make executable.
+
+**Set Up Commit Template** (optional but recommended):
+Copy `assets/commit-template.txt` to `~/.gitmessage.txt`:
+```bash
+git config commit.template ~/.gitmessage.txt
+```
+
+### Verify Setup
+
+Run verification checks:
+```bash
+# Check git configuration
+git config -l | grep -E "user\.|remote\.origin\.|branch\.autosetuprebase"
+
+# Test Gerrit connection
+ssh -p 29418 <username>@review.typo3.org
+
+# Verify hooks exist
+ls -la .git/hooks/commit-msg .git/hooks/pre-commit
+```
+
+All checks must pass before proceeding.
+
+## Phase 3: Issue Management
+
+### Working with Existing Forge Issue
+
+If user provides a Forge issue URL (e.g., `https://forge.typo3.org/issues/105737`):
+
+1. **Fetch and analyze the issue**:
+   ```
+   Use WebFetch to extract:
+   - Issue title and description
+   - Issue number (e.g., #105737)
+   - Status and category
+   - Affected TYPO3 version
+   - Steps to reproduce
+   - Expected vs actual behavior
+   - Any existing patches or comments
+   ```
+
+2. **Determine contribution scope**:
+   - Bugfix → `[BUGFIX]` commit type
+   - New feature → `[FEATURE]` commit type (main branch only)
+   - Refactoring/cleanup → `[TASK]` commit type
+   - Documentation → `[DOCS]` commit type
+   - Security → `[SECURITY]` commit type
+
+3. **Check for existing patches**:
+   - Search Gerrit: https://review.typo3.org
+   - Look for Change-Id or related patches
+   - Coordinate if others are working on it
+
+### Creating New Forge Issue
+
+If user has a bug but no issue yet:
+
+1. **Gather issue information**:
+   - What is broken or what feature is needed?
+   - Steps to reproduce (for bugs)
+   - Expected behavior vs actual behavior
+   - TYPO3 version affected
+   - Error messages or logs
+
+2. **Create issue on Forge**:
+   - Visit https://forge.typo3.org/projects/typo3cms-core/issues/new
+   - Fill in all required fields
+   - Category: Choose appropriate area (Backend, Frontend, etc.)
+   - Priority: Should have (most common), Must have, Could have
+   - Set target version if known
+
+3. **Note the issue number** for commit message later
+
+**Important**: Every patch must have a matching Forge issue before submission.
+
+## Phase 4: Development
+
+### Create Feature Branch
+
+```bash
+# Ensure on main branch with latest changes
+git checkout main
+git pull origin main
+
+# Create feature branch (name pattern: feature/<issue-number>-<description>)
+git checkout -b feature/105737-fix-indexed-search-crash
+```
+
+### Make Code Changes
+
+Guide the user through development:
+
+1. **Analyze the issue**: Understand root cause and scope
+2. **Locate affected files**: Use code search and navigation
+3. **Implement fix or feature**:
+   - Follow TYPO3 coding standards
+   - Add/update documentation as needed
+   - Consider backwards compatibility
+   - Add deprecations properly (no `[!!!]` for deprecations)
+
+4. **Write tests**:
+   - Unit tests for isolated functionality
+   - Functional tests for integrated behavior
+   - Follow existing test patterns in codebase
+
+5. **Build frontend assets** (if needed):
+   - SCSS → CSS compilation
+   - JavaScript/TypeScript bundling
+   - Run build commands: `npm run build` or similar
+
+6. **Create changelog entries** (if needed):
+   - Breaking changes require changelog
+   - New features should have changelog
+   - Location: `Build/CHANGELOG/`
+
+### Integrate Code Quality Checks
+
+Use `typo3-conformance-skill` if available:
+```
+Use typo3-conformance-skill to validate:
+- Coding standards (PSR-12, TYPO3 CGL)
+- PHP syntax and compatibility
+- PHPCS violations
+- Static analysis (PHPStan)
+```
+
+### Self-Review
+
+Before committing, review the changes:
+- Code follows TYPO3 conventions
+- No debug statements or console.log
+- Tests pass locally
+- Documentation is updated
+- Changelog created if needed
+- No unintended file changes
+
+## Phase 5: Commit Creation
+
+### Commit Message Format
+
+TYPO3 requires strict commit message formatting. Use `scripts/create-commit-message.py` for interactive generation, or follow this format:
+
+**Structure**:
+```
+[TYPE] Subject line (max 52 chars, imperative mood)
+
+Detailed description of changes explaining the how and why.
+Lines wrapped at 72 characters. Use bullet points with * for
+multiple items.
+
+Resolves: #12345
+Releases: main, 13.4, 12.4
+```
+
+**Commit Types**:
+- `[BUGFIX]` - Bug fixes
+- `[FEATURE]` - New features (main branch only)
+- `[TASK]` - Refactoring, cleanup, miscellaneous
+- `[DOCS]` - Documentation changes
+- `[SECURITY]` - Security fixes
+- `[!!!]` - Breaking change prefix (before type: `[!!!][FEATURE]`)
+
+**Footer Tags** (required):
+- `Resolves: #<issue>` - Closes issue on merge (for features/tasks)
+- `Related: #<issue>` - Links related issues without closing
+- `Releases: main, 13.4, 12.4` - Target versions (comma-separated)
+- `Change-Id: I<hash>` - Auto-generated by git hook (DO NOT modify)
+
+**Subject Line Rules**:
+- Maximum 52 characters (72 absolute limit)
+- Imperative mood: "Fix bug" not "Fixed bug" or "Fixes bug"
+- Start with uppercase letter
+- No period at the end
+- Describe what now works, not what was broken
+
+**Description Body**:
+- Explain how and why, not what (code shows what)
+- Don't repeat Forge issue content
+- Don't describe reproduction steps
+- Keep focused on changes made
+- Wrap at 72 characters (URLs can be longer)
+
+Load `references/commit-message-format.md` for complete specification with examples.
+
+### Create the Commit
+
+**Initial commit**:
+```bash
+git add .
+git commit
+# Edit commit message in editor (template will load if configured)
+```
+
+The commit-msg hook automatically adds the `Change-Id` line - never modify or remove this!
+
+**Validate commit message**:
+Run `scripts/validate-commit-message.py` to check format compliance.
+
+### Amending Commits
+
+For subsequent changes to the same patch:
+```bash
+git add .
+git commit --amend
+# Preserve the Change-Id line!
+```
+
+**Important**: Keep only ONE commit on the branch. All changes should be amended into the single commit.
+
+## Phase 6: Gerrit Submission
+
+### First-Time Submission
+
+**Push to Gerrit**:
+```bash
+git push origin HEAD:refs/for/main
+```
+
+Or simply `git push` if defaults are configured.
+
+**Expected response**:
+```
+remote: SUCCESS
+remote: https://review.typo3.org/c/Packages/TYPO3.CMS/+/12345 [NEW]
+```
+
+Copy and save the review URL!
+
+### Post-Submission Actions
+
+1. **Check Continuous Integration**:
+   - Gerrit automatically runs tests
+   - Wait for CI results (usually 5-15 minutes)
+   - Green checkmarks = passed, red X = failed
+
+2. **Monitor for feedback**:
+   - You'll receive email notifications
+   - Check Gerrit review page regularly
+   - Join #typo3-cms-coredev on Slack
+
+3. **Advertise your patch** (optional, recommended for new contributors):
+   - Post in #typo3-cms-coredev: "I've submitted my first patch for issue #12345, would appreciate reviews: <gerrit-url>"
+
+## Phase 7: Review & Update Cycle
+
+### Responding to Feedback
+
+When reviewers request changes:
+
+1. **Read feedback carefully**: Understand what needs to change
+2. **Make requested changes**: Update code locally
+3. **Amend the commit**:
+   ```bash
+   git add .
+   git commit --amend
+   # Keep the Change-Id unchanged!
+   ```
+4. **Push updated patch**:
+   ```bash
+   git push origin HEAD:refs/for/main
+   ```
+
+This creates a new patchset on the existing review.
+
+### Rebasing Your Patch
+
+If your patch falls behind main branch:
+
+**Option 1: Browser-based (easiest)**:
+1. Open your patch on Gerrit
+2. Click "Rebase" button
+3. Select "Rebase on top of the main branch"
+4. Works only if no conflicts exist
+
+**Option 2: Command-line**:
+```bash
+# Fetch latest changes
+git fetch origin
+
+# Rebase onto main
+git rebase origin/main
+
+# If conflicts occur, resolve them:
+# 1. Fix conflicts in files
+# 2. git add <resolved-files>
+# 3. git rebase --continue
+
+# Push rebased patch
+git push origin HEAD:refs/for/main
+```
+
+Load `references/gerrit-workflow.md` for detailed rebase and conflict resolution procedures.
+
+### Review Process
+
+**Voting System**:
+- **Code Review**: -2 (reject) to +2 (approve)
+- **Verified**: -1 (fails tests) to +1 (passes tests)
+- **+2 from core team member** + **+1 verified** → Ready for merge
+
+**Typical Timeline**:
+- Simple bugfixes: 1-3 days
+- Complex features: 1-2 weeks
+- Patches need at least 2 reviewers (one must be core team)
+
+## Phase 8: Merge & Completion
+
+### Pre-Merge
+
+Once approved:
+- Core merger will handle final merge
+- You'll receive notification when merged
+- Issue status updates automatically on Forge
+
+### Post-Merge
+
+1. **Clean up local branch**:
+   ```bash
+   git checkout main
+   git pull origin main
+   git branch -D feature/105737-fix-indexed-search-crash
+   ```
+
+2. **Update Forge issue if needed**:
+   - Add any follow-up notes
+   - Close related issues if applicable
+
+3. **Celebrate**: You've contributed to TYPO3 Core! 🎉
+
+## Integration with Other Skills
+
+### typo3-ddev-skill
+
+Use for complete DDEV-based development environment:
+```
+Activate typo3-ddev-skill when:
+- User needs TYPO3 installation from scratch
+- DDEV configuration required
+- Local testing environment setup
+- Database management needed
+```
+
+### typo3-docs-skill
+
+Use for documentation contributions:
+```
+Activate typo3-docs-skill when:
+- Contributing to TYPO3 documentation
+- Understanding docs structure
+- Rendering documentation locally
+- Writing documentation standards
+```
+
+### typo3-conformance-skill
+
+Use for code quality validation:
+```
+Activate typo3-conformance-skill when:
+- Checking TYPO3 coding standards
+- Running PHPCS, PHPStan
+- Validating code quality before submission
+- Fixing coding standard violations
+```
+
+## Common Scenarios
+
+### Scenario 1: Complete First Contribution
+
+User: "I want to fix https://forge.typo3.org/issues/105737"
+
+**Workflow**:
+1. Run prerequisites check
+2. Fetch issue details
+3. Verify/setup accounts if needed
+4. Setup/verify environment
+5. Create feature branch
+6. Guide through fix development
+7. Create commit with proper message
+8. Submit to Gerrit
+9. Monitor review process
+
+### Scenario 2: Update Existing Patch
+
+User: "Reviewer asked me to change variable names in my patch"
+
+**Workflow**:
+1. Verify git setup and branch
+2. Guide through changes
+3. Amend commit (preserve Change-Id!)
+4. Push updated patchset
+5. Notify reviewer on Gerrit
+
+### Scenario 3: Rebase Needed
+
+User: "My patch shows merge conflicts"
+
+**Workflow**:
+1. Load `references/gerrit-workflow.md` for conflict resolution
+2. Guide through rebase process
+3. Help resolve conflicts if needed
+4. Test after rebase
+5. Push rebased patch
+
+### Scenario 4: Create New Issue
+
+User: "I found a bug in TYPO3 backend but there's no issue"
+
+**Workflow**:
+1. Gather bug details systematically
+2. Check if issue already exists on Forge
+3. Guide through Forge issue creation
+4. Proceed with contribution workflow
+
+## Troubleshooting
+
+Common issues and solutions:
+
+**"Permission denied" when pushing**:
+- Check SSH key configuration
+- Test: `ssh -p 29418 <username>@review.typo3.org`
+- Verify pushurl: `git config remote.origin.pushurl`
+
+**"Missing Change-Id in commit message"**:
+- Install commit-msg hook: `composer gerrit:setup`
+- Or copy manually from `Build/git-hooks/commit-msg`
+- Re-commit with `git commit --amend`
+
+**"Merge conflict" during rebase**:
+- Load `references/gerrit-workflow.md` for detailed steps
+- Resolve conflicts manually
+- Continue: `git add . && git rebase --continue`
+
+**"CI tests failing"**:
+- Check test output on Gerrit
+- Run tests locally: `composer test:unit`, `composer test:functional`
+- Fix issues and amend commit
+- Push updated patchset
+
+Load `references/troubleshooting.md` for comprehensive troubleshooting guide.
+
+## Resources
+
+### scripts/
+
+**setup-typo3-coredev.sh**: Complete automated DDEV setup (recommended for new contributors)
+```bash
+./scripts/setup-typo3-coredev.sh
+```
+Interactive script that sets up complete TYPO3 Core development environment including Git configuration, DDEV, TYPO3 installation, and test data.
+
+**verify-prerequisites.sh**: Check all prerequisites (accounts, git config, environment)
+```bash
+./scripts/verify-prerequisites.sh
+```
+
+**create-commit-message.py**: Interactive commit message generator following TYPO3 format
+```bash
+python scripts/create-commit-message.py --issue 105737 --type BUGFIX
+```
+
+**validate-commit-message.py**: Validate commit message against TYPO3 requirements
+```bash
+python scripts/validate-commit-message.py
+```
+
+### references/
+
+**ddev-setup-workflow.md**: Complete production-tested DDEV setup workflow (686 lines)
+- Step-by-step manual setup instructions
+- DDEV configuration details
+- TYPO3 installation and extension activation
+- Test data generation
+- Troubleshooting and best practices
+
+**account-setup.md**: Detailed account creation guides (TYPO3.org, Gerrit, Slack)
+
+**commit-message-format.md**: Complete commit message specification with examples
+
+**gerrit-workflow.md**: Comprehensive Gerrit usage (review, rebase, conflicts, voting)
+
+**troubleshooting.md**: Common issues and solutions
+
+### assets/
+
+**commit-template.txt**: Git commit message template for TYPO3 (copy to `~/.gitmessage.txt`)
+
+## Best Practices
+
+1. **One commit per patch**: Amend changes, don't create multiple commits
+2. **Preserve Change-Id**: Never modify the auto-generated Change-Id line
+3. **Rebase regularly**: Keep patch up-to-date with main branch
+4. **Self-review first**: Check changes before pushing
+5. **Respond promptly**: Answer reviewer feedback within 2-3 days
+6. **Test thoroughly**: Run tests locally before submission
+7. **Ask for help**: Use #typo3-cms-coredev Slack channel when stuck
+8. **Follow conventions**: Read existing code patterns in affected files
+
+## References
+
+- **Contribution Guide**: https://docs.typo3.org/m/typo3/guide-contributionworkflow/main/en-us/
+- **Forge**: https://forge.typo3.org
+- **Gerrit**: https://review.typo3.org
+- **Forger** (search tool): https://forger.typo3.com
+- **Slack**: https://typo3.slack.com (#typo3-cms-coredev)
