@@ -1,5 +1,5 @@
 ---
-name: TYPO3 Core Contributions
+name: typo3-core-contributions
 version: 1.1.0
 description: >
   Guide contributors through the complete TYPO3 Core contribution workflow from account setup to patch submission.
