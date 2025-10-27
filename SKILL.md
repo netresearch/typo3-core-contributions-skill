@@ -1,6 +1,17 @@
 ---
-name: typo3-core-contributions
-description: Guide contributors through the complete TYPO3 Core contribution workflow from account setup to patch submission. Use this skill when working with TYPO3 Forge issues (forge.typo3.org/issues/*), preparing patches for TYPO3 Core, or when users mention contributing to TYPO3, submitting patches to Gerrit, or fixing TYPO3 bugs. Handles account verification, environment setup with DDEV, commit message formatting, and Gerrit review workflows.
+name: TYPO3 Core Contributions
+version: 1.1.0
+description: >
+  Guide contributors through the complete TYPO3 Core contribution workflow from account setup to patch submission.
+
+  Trigger when: working with TYPO3 Forge issues (forge.typo3.org/issues/*), preparing patches for TYPO3 Core,
+  contributing to TYPO3, submitting patches to Gerrit (review.typo3.org), fixing TYPO3 bugs, managing WIP state,
+  or debugging GitLab CI failures.
+
+  Covers: Account setup, environment configuration with DDEV, commit message formatting, Gerrit review workflow,
+  WIP state management (command-line and web UI), CI/CD debugging (CGL, PHPStan, unit tests), troubleshooting
+  (60+ scenarios), code quality enforcement, and systematic patch submission.
+license: Complete terms in LICENSE
 ---
 
 # TYPO3 Core Contributions
