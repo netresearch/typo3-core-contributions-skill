@@ -1,16 +1,18 @@
 ---
 name: typo3-core-contributions
-version: 1.2.0
+version: 1.2.1
 description: |
-  Guide contributors through the complete TYPO3 Core contribution workflow from account setup to patch submission.
+  Guide contributors through the complete TYPO3 Core contribution workflow from account setup to patch submission
+  for both code and documentation contributions.
 
   Trigger when: working with TYPO3 Forge issues (forge.typo3.org/issues/*), preparing patches for TYPO3 Core,
-  contributing to TYPO3, submitting patches to Gerrit (review.typo3.org), fixing TYPO3 bugs, managing WIP state,
-  or debugging GitLab CI failures.
+  contributing to TYPO3 (code or documentation), submitting patches to Gerrit (review.typo3.org) or GitHub PRs
+  (TYPO3-Documentation/*), fixing TYPO3 bugs, managing WIP state, or debugging CI failures.
 
   Covers: Account setup, environment configuration with DDEV, commit message formatting, Gerrit review workflow,
-  WIP state management (command-line and web UI), CI/CD debugging (CGL, PHPStan, unit tests), troubleshooting
-  (60+ scenarios), code quality enforcement, and systematic patch submission.
+  GitHub PR workflow for documentation, WIP state management (command-line and web UI), CI/CD debugging (CGL,
+  PHPStan, unit tests), troubleshooting (60+ scenarios), code quality enforcement, and systematic patch submission
+  for both code and documentation repositories.
 license: Complete terms in LICENSE
 ---
 
@@ -30,35 +32,55 @@ Activate when the user:
 - Requests TYPO3 development environment setup
 - Asks about TYPO3 commit message format or contribution guidelines
 
-## Scope: Core Code vs. Documentation
+## Scope: TYPO3 Core Contributions (Code AND Documentation)
 
-**This skill covers**: TYPO3 Core code contributions (PHP, JavaScript, CSS, tests)
-- Submission via Gerrit (review.typo3.org)
-- Uses Git commit-msg hooks
-- Forge issue tracking
-- CI/CD via GitLab
+**This skill covers**: All TYPO3 Core contributions
+- **Core Code**: PHP, JavaScript, CSS, tests via Gerrit (review.typo3.org)
+- **Core Documentation**: TYPO3CMS-Guide-* repositories via GitHub Pull Requests
+- Forge issue tracking (for both code and documentation)
+- Commit message standards
+- Contribution workflow guidance
 
-**Not covered by this skill**: TYPO3 Documentation contributions
-- **For documentation work**, use the dedicated skill:
-  - **Extension Docs**: https://github.com/netresearch/typo3-docs-skill
-  - **Core Docs**: TYPO3CMS-Guide-ContributionWorkflow repository
-- **Different workflow**: GitHub Pull Requests (not Gerrit)
-- **Different format**: reStructuredText (.rst files)
-- **Different repository**: typo3-documentation/* GitHub organization
+**Repository-Specific Workflows**:
 
-**Example from real experience**:
+### Core Code (typo3/typo3)
+- **Submission**: Gerrit (review.typo3.org)
+- **Validation**: Git commit-msg hooks
+- **CI/CD**: GitLab pipelines
+- **Format**: PHP, JavaScript, CSS, YAML
+- **This skill handles**: Complete workflow
+
+### Core Documentation (TYPO3-Documentation/*)
+- **Submission**: GitHub Pull Requests
+- **Validation**: GitHub Actions / pre-commit hooks
+- **CI/CD**: GitHub Actions
+- **Format**: reStructuredText (.rst files)
+- **This skill handles**: GitHub PR workflow, commit standards
+
+**Integration with typo3-docs-skill**:
+- **typo3-docs-skill**: Validates and writes TYPO3 documentation format (reStructuredText)
+  - Use for: Documentation structure, formatting, rendering
+  - Validates: Extension docs, Core docs, any TYPO3 documentation
+  - URL: https://github.com/netresearch/typo3-docs-skill
+- **This skill (typo3-core-contributions)**: Handles contribution workflow
+  - Use for: GitHub PR process, commit messages, review coordination
+
+**Example from real experience (Issue #105737)**:
 ```
-✅ Core code fix → This skill → Gerrit submission
-❌ Documentation fix → typo3-docs-skill → GitHub PR
+✅ Core code fix → This skill → Gerrit submission (#91302)
+✅ Documentation fix → This skill → GitHub PR (#397)
+✅ Documentation validation → typo3-docs-skill → Format checking
 ```
 
-When we fixed issue #105737, we:
-1. Used **this skill** to submit the Core code patch via Gerrit
+When we fixed issue #105737:
+1. Used **this skill** to submit Core code patch via Gerrit
 2. Discovered docs error in commit message guide
-3. Should have used **typo3-docs-skill** for the documentation PR
-4. Submitted GitHub PR to TYPO3CMS-Guide-ContributionWorkflow
+3. Used **this skill** to create GitHub PR to TYPO3CMS-Guide-ContributionWorkflow
+4. Could use **typo3-docs-skill** to validate reStructuredText formatting
 
-**If user requests documentation work**: Inform them about the separate workflow and recommend the typo3-docs-skill.
+**When to use each skill**:
+- **typo3-core-contributions** (this): For CONTRIBUTING to TYPO3 (code or docs)
+- **typo3-docs-skill**: For WRITING/VALIDATING documentation format
 
 ## Workflow Decision Tree
 
@@ -621,14 +643,18 @@ Activate typo3-ddev-skill when:
 
 ### typo3-docs-skill
 
-Use for documentation contributions:
+Use for documentation format validation and writing:
 ```
 Activate typo3-docs-skill when:
-- Contributing to TYPO3 documentation
-- Understanding docs structure
-- Rendering documentation locally
-- Writing documentation standards
+- Validating reStructuredText format and structure
+- Checking documentation rendering locally
+- Writing TYPO3 documentation (Core or Extension)
+- Understanding documentation standards and best practices
+- Fixing formatting issues in .rst files
 ```
+
+**Complementary usage**: This skill handles the contribution workflow (GitHub PRs, commit messages),
+while typo3-docs-skill handles the documentation format itself.
 
 ### typo3-conformance-skill
 
