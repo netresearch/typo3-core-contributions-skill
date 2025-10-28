@@ -1,6 +1,6 @@
 ---
 name: typo3-core-contributions
-version: 1.2.1
+version: 1.3.0
 description: |
   Guide contributors through the complete TYPO3 Core contribution workflow from account setup to patch submission
   for both code and documentation contributions.
@@ -403,6 +403,15 @@ Guide the user through development:
    - Unit tests for isolated functionality
    - Functional tests for integrated behavior
    - Follow existing test patterns in codebase
+   - **Use typo3-testing-skill** for comprehensive test writing:
+     ```
+     Activate typo3-testing-skill for:
+     - Writing unit tests for new functionality
+     - Creating functional tests for integrations
+     - Understanding TYPO3 test patterns
+     - Setting up test fixtures and data
+     - Running and debugging tests locally
+     ```
 
 5. **Build frontend assets** (if needed):
    - SCSS → CSS compilation
@@ -414,23 +423,38 @@ Guide the user through development:
    - New features should have changelog
    - Location: `Build/CHANGELOG/`
 
-### Integrate Code Quality Checks
+### Code Quality Validation
 
-Use `typo3-conformance-skill` if available:
+**IMPORTANT**: Always validate code quality BEFORE committing. Use `typo3-conformance-skill`:
+
 ```
-Use typo3-conformance-skill to validate:
-- Coding standards (PSR-12, TYPO3 CGL)
-- PHP syntax and compatibility
-- PHPCS violations
-- Static analysis (PHPStan)
+Activate typo3-conformance-skill to:
+- Check TYPO3 Coding Guidelines (CGL) compliance
+- Run PHP_CodeSniffer (PHPCS) validation
+- Execute PHPStan static analysis
+- Validate PHP syntax and compatibility
+- Fix coding standard violations automatically
+- Ensure code passes CI checks locally
 ```
+
+**When to use**:
+- ✅ Before first commit
+- ✅ After making code changes
+- ✅ Before pushing to Gerrit
+- ✅ When CI checks fail
+
+**Benefits**:
+- Catch issues locally before submission
+- Faster review process (no back-and-forth on standards)
+- Learn TYPO3 coding conventions
+- Avoid CI pipeline failures
 
 ### Self-Review
 
 Before committing, review the changes:
-- Code follows TYPO3 conventions
+- Code follows TYPO3 conventions (validated with typo3-conformance-skill)
 - No debug statements or console.log
-- Tests pass locally
+- Tests pass locally (written/validated with typo3-testing-skill)
 - Documentation is updated
 - Changelog created if needed
 - No unintended file changes
@@ -630,42 +654,134 @@ Once approved:
 
 ## Integration with Other Skills
 
+This skill works best when combined with specialized TYPO3 skills. Activate them proactively during the contribution workflow.
+
 ### typo3-ddev-skill
 
-Use for complete DDEV-based development environment:
+**Purpose**: DDEV-based development environment setup and management
+
+**When to activate**:
 ```
-Activate typo3-ddev-skill when:
-- User needs TYPO3 installation from scratch
-- DDEV configuration required
-- Local testing environment setup
-- Database management needed
+Use typo3-ddev-skill when:
+- Setting up TYPO3 Core development environment from scratch
+- Configuring DDEV for TYPO3
+- Managing local TYPO3 instances
+- Database operations and management
+- Troubleshooting DDEV/Docker issues
 ```
+
+**Integration point**: Phase 2 (Environment Setup)
+
+**URL**: Check if available in your environment
 
 ### typo3-docs-skill
 
-Use for documentation format validation and writing:
+**Purpose**: TYPO3 documentation format validation and writing
+
+**When to activate**:
 ```
-Activate typo3-docs-skill when:
-- Validating reStructuredText format and structure
-- Checking documentation rendering locally
+Use typo3-docs-skill when:
 - Writing TYPO3 documentation (Core or Extension)
-- Understanding documentation standards and best practices
+- Validating reStructuredText (.rst) format and structure
+- Checking documentation rendering locally
+- Understanding TYPO3 documentation standards
 - Fixing formatting issues in .rst files
+- Creating proper cross-references and code blocks
 ```
+
+**Integration point**: Phase 4 (Development) - for documentation contributions
 
 **Complementary usage**: This skill handles the contribution workflow (GitHub PRs, commit messages),
 while typo3-docs-skill handles the documentation format itself.
 
+**URL**: https://github.com/netresearch/typo3-docs-skill
+
 ### typo3-conformance-skill
 
-Use for code quality validation:
+**Purpose**: TYPO3 Coding Guidelines (CGL) and code quality validation
+
+**When to activate** (PROACTIVELY):
 ```
-Activate typo3-conformance-skill when:
-- Checking TYPO3 coding standards
-- Running PHPCS, PHPStan
-- Validating code quality before submission
-- Fixing coding standard violations
+Use typo3-conformance-skill:
+- BEFORE committing code changes
+- After implementing new functionality
+- When fixing coding standard violations
+- Before pushing to Gerrit
+- When CI checks fail
 ```
+
+**Validates**:
+- TYPO3 Coding Guidelines (CGL) compliance
+- PHP_CodeSniffer (PHPCS) standards
+- PHPStan static analysis
+- PHP syntax and version compatibility
+- Best practices and patterns
+
+**Integration points**:
+- Phase 4 (Development) - Code Quality Validation section
+- Phase 6 (Gerrit Submission) - Before pushing
+- Phase 7 (Review & Update) - When CI fails
+
+**Benefits**:
+- Catch issues locally before submission
+- Avoid CI pipeline failures
+- Faster review process
+- Learn TYPO3 conventions
+
+**URL**: https://github.com/netresearch/typo3-conformance-skill
+
+### typo3-testing-skill
+
+**Purpose**: TYPO3 test writing and execution
+
+**When to activate** (PROACTIVELY):
+```
+Use typo3-testing-skill when:
+- Writing unit tests for new functionality
+- Creating functional tests for integrations
+- Writing acceptance/E2E tests
+- Understanding TYPO3 test patterns and structure
+- Setting up test fixtures and data providers
+- Running and debugging tests locally
+- Fixing failing tests
+- Increasing test coverage
+```
+
+**Covers**:
+- Unit testing (PHPUnit)
+- Functional testing (database integration)
+- Acceptance testing (Codeception)
+- Test structure and organization
+- Mocking and fixtures
+- Test execution and debugging
+
+**Integration points**:
+- Phase 4 (Development) - Writing Tests subsection
+- Phase 7 (Review & Update) - When tests fail
+- Before submission - Ensure tests pass
+
+**Benefits**:
+- Write better, more maintainable tests
+- Understand TYPO3 testing patterns
+- Debug test failures effectively
+- Ensure adequate test coverage
+
+**URL**: https://github.com/netresearch/typo3-testing-skill
+
+## Recommended Workflow with Skills
+
+**Complete workflow using all skills**:
+
+1. **Setup** → typo3-ddev-skill → Environment ready
+2. **Development** → This skill → Feature branch created
+3. **Code Implementation** → This skill → Code written
+4. **Testing** → typo3-testing-skill → Tests written and passing
+5. **Quality Check** → typo3-conformance-skill → CGL validated
+6. **Documentation** (if applicable) → typo3-docs-skill → Docs formatted
+7. **Commit** → This skill → Proper commit message
+8. **Submit** → This skill → Gerrit/GitHub submission
+9. **Review** → This skill → Handle feedback
+10. **Merge** → This skill → Celebrate! 🎉
 
 ## Common Scenarios
 
@@ -673,27 +789,38 @@ Activate typo3-conformance-skill when:
 
 User: "I want to fix https://forge.typo3.org/issues/105737"
 
-**Workflow**:
+**Workflow with skill integrations**:
 1. Run prerequisites check
-2. Fetch issue details
+2. Fetch issue details from Forge
 3. Verify/setup accounts if needed
-4. Setup/verify environment
+4. **Use typo3-ddev-skill** → Setup/verify environment
 5. Create feature branch
 6. Guide through fix development
-7. Create commit with proper message
-8. Submit to Gerrit
-9. Monitor review process
+7. **Use typo3-testing-skill** → Write unit/functional tests
+8. **Use typo3-conformance-skill** → Validate code quality (CGL, PHPStan)
+9. Create commit with proper message
+10. Submit to Gerrit
+11. Monitor review process
+
+**Proactive skill activation**:
+- Activate typo3-testing-skill when writing tests (step 7)
+- Activate typo3-conformance-skill BEFORE committing (step 8)
+- These skills help catch issues locally, saving review cycles
 
 ### Scenario 2: Update Existing Patch
 
 User: "Reviewer asked me to change variable names in my patch"
 
-**Workflow**:
+**Workflow with skill integrations**:
 1. Verify git setup and branch
 2. Guide through changes
-3. Amend commit (preserve Change-Id!)
-4. Push updated patchset
-5. Notify reviewer on Gerrit
+3. **Use typo3-conformance-skill** → Validate changes meet CGL
+4. Amend commit (preserve Change-Id!)
+5. Push updated patchset
+6. Notify reviewer on Gerrit
+
+**Best practice**: Always run typo3-conformance-skill after making changes to ensure
+new code still passes all quality checks.
 
 ### Scenario 3: Rebase Needed
 
@@ -739,6 +866,28 @@ User: "Documentation seems wrong, but the real issue is in the Core code"
 3. Ensure both fixes reference each other
 4. Balance backward compatibility with standardization
 
+### Scenario 6: CI Pipeline Failures
+
+User: "My patch was submitted but CI checks are failing"
+
+**Workflow with skill integrations**:
+1. Check Gerrit for CI failure details
+2. Identify failure type:
+   - **CGL/Coding Standards** → Use typo3-conformance-skill
+   - **PHPStan/Static Analysis** → Use typo3-conformance-skill
+   - **Unit/Functional Tests** → Use typo3-testing-skill
+   - **Build/Compilation** → This skill for troubleshooting
+3. Fix issues locally using appropriate skill
+4. **Validate locally BEFORE pushing**:
+   - Run typo3-conformance-skill for code quality
+   - Run typo3-testing-skill for test execution
+5. Amend commit with fixes
+6. Push updated patchset
+
+**Pro tip**: Use typo3-conformance-skill and typo3-testing-skill BEFORE first
+submission to avoid CI failures entirely. Catching issues locally is faster
+than waiting for CI pipelines.
+
 ## Troubleshooting
 
 Common issues and solutions:
@@ -759,10 +908,17 @@ Common issues and solutions:
 - Continue: `git add . && git rebase --continue`
 
 **"CI tests failing"**:
-- Check test output on Gerrit
-- Run tests locally: `composer test:unit`, `composer test:functional`
-- Fix issues and amend commit
-- Push updated patchset
+- **For code quality issues** (CGL, PHPStan): Use **typo3-conformance-skill**
+- **For test failures**: Use **typo3-testing-skill**
+- Check specific failure details on Gerrit
+- Fix issues locally with appropriate skill
+- Validate locally before pushing updated patchset
+
+**"Coding standards violations"**:
+- Use **typo3-conformance-skill** immediately
+- Run PHPCS, PHPStan, and CGL checks locally
+- Fix violations automatically where possible
+- Learn TYPO3 conventions to avoid future violations
 
 Load `references/troubleshooting.md` for comprehensive troubleshooting guide.
 
@@ -832,12 +988,21 @@ export FORGE_API_KEY="your-api-key"
 
 1. **One commit per patch**: Amend changes, don't create multiple commits
 2. **Preserve Change-Id**: Never modify the auto-generated Change-Id line
-3. **Rebase regularly**: Keep patch up-to-date with main branch
-4. **Self-review first**: Check changes before pushing
-5. **Respond promptly**: Answer reviewer feedback within 2-3 days
-6. **Test thoroughly**: Run tests locally before submission
-7. **Ask for help**: Use #typo3-cms-coredev Slack channel when stuck
-8. **Follow conventions**: Read existing code patterns in affected files
+3. **Validate BEFORE committing**: Use typo3-conformance-skill and typo3-testing-skill proactively
+4. **Test thoroughly**: Write and run tests locally (typo3-testing-skill) before submission
+5. **Quality first**: Always validate with typo3-conformance-skill before pushing
+6. **Rebase regularly**: Keep patch up-to-date with main branch
+7. **Self-review first**: Check changes before pushing
+8. **Respond promptly**: Answer reviewer feedback within 2-3 days
+9. **Use complementary skills**: Leverage typo3-ddev-skill, typo3-docs-skill as needed
+10. **Ask for help**: Use #typo3-cms-coredev Slack channel when stuck
+11. **Follow conventions**: Read existing code patterns in affected files
+
+**Skill integration best practices**:
+- Use typo3-conformance-skill BEFORE every commit
+- Use typo3-testing-skill when writing ANY test
+- Use typo3-docs-skill for ALL documentation contributions
+- Catch issues locally to avoid CI failures and review iterations
 
 ## References
 
