@@ -144,7 +144,7 @@ Additional context can be found in the TYPO3 RFC [2].
 
 `Tag: value` (colon followed by space)
 
-### Resolves
+### Resolves **(REQUIRED)**
 
 Closes Forge issue when patch is merged:
 
@@ -158,12 +158,17 @@ Resolves: #12345
 Resolves: #12346
 ```
 
+**Critical Rule**: Every commit MUST have at least one `Resolves:` line. The commit-msg hook will reject commits without it.
+
 **When to use**:
 - Features: MUST use Resolves
-- Tasks: MUST use Resolves (Related alone will be rejected by hook)
+- Tasks: MUST use Resolves
 - Bugfixes: MUST use Resolves
+- All commit types: ALWAYS use Resolves
 
-### Related
+**Note**: For features and tasks, `Resolves:` closes the issue on merge. For bugfixes, you can use `Related:` in addition to `Resolves:` if needed, but `Resolves:` is still mandatory.
+
+### Related **(OPTIONAL)**
 
 Links issue without closing it:
 
@@ -171,10 +176,13 @@ Links issue without closing it:
 Related: #12345
 ```
 
-**When to use**:
-- Bugfixes: Use Related if issue should stay open
-- Partial fixes: Related for multi-step fixes
+**Critical Rule**: `Related:` CANNOT be used alone - you MUST have at least one `Resolves:` line in addition to any `Related:` lines. The commit-msg hook will reject commits with only `Related:` tags.
+
+**When to use** (in addition to Resolves):
+- Bugfixes: Use Related for issues that should stay open
+- Partial fixes: Related for multi-step fixes where issue remains open
 - Context: Link related discussions or issues
+- Cross-references: Link to related work or documentation
 
 ### Releases
 
@@ -325,8 +333,9 @@ Change-Id: Iaa11bb22cc33dd44ee55ff66gg77hh88ii99jj00
 
 ### Footer
 
-- [ ] `Resolves:` present for BUGFIX/FEATURE/TASK commits
-  **Important**: `Related:` alone will be rejected by commit hook - you MUST use `Resolves:`
+- [ ] `Resolves:` present **(REQUIRED for ALL commits)**
+  **Critical**: The commit-msg hook WILL REJECT commits without at least one `Resolves:` line
+- [ ] `Related:` used only in addition to `Resolves:` (optional, cannot be used alone)
 - [ ] `Releases:` present with valid versions
 - [ ] `Change-Id:` present (added by hook)
 - [ ] Proper format: `Tag: value` (colon + space)
