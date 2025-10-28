@@ -159,9 +159,9 @@ Resolves: #12346
 ```
 
 **When to use**:
-- Features: MUST use Resolves or Fixes
-- Tasks: MUST use Resolves or Fixes (Related alone will be rejected by hook)
-- Bugfixes: MUST use Resolves or Fixes
+- Features: MUST use Resolves
+- Tasks: MUST use Resolves (Related alone will be rejected by hook)
+- Bugfixes: MUST use Resolves
 
 ### Related
 
@@ -325,8 +325,8 @@ Change-Id: Iaa11bb22cc33dd44ee55ff66gg77hh88ii99jj00
 
 ### Footer
 
-- [ ] `Resolves:` or `Fixes:` present for BUGFIX/FEATURE/TASK commits
-  **Important**: `Related:` alone will be rejected by commit hook - you MUST use `Resolves:` or `Fixes:`
+- [ ] `Resolves:` present for BUGFIX/FEATURE/TASK commits
+  **Important**: `Related:` alone will be rejected by commit hook - you MUST use `Resolves:`
 - [ ] `Releases:` present with valid versions
 - [ ] `Change-Id:` present (added by hook)
 - [ ] Proper format: `Tag: value` (colon + space)

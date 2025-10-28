@@ -169,7 +169,7 @@ Releases: main, 12.4
 
 **Types**: BUGFIX, FEATURE, TASK, DOCS, CLEANUP, SECURITY
 
-**Required**: At least one `Resolves:` or `Fixes:` line
+**Required**: At least one `Resolves:` line
 
 **Optional**: `Related:` (but cannot be used alone)
 
