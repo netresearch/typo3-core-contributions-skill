@@ -395,9 +395,16 @@ Guide the user through development:
 2. **Locate affected files**: Use code search and navigation
 3. **Implement fix or feature**:
    - Follow TYPO3 coding standards
+   - **Use framework patterns** (DI, service locators, event dispatchers)
+   - Check if TYPO3 already provides the pattern you need
    - Add/update documentation as needed
    - Consider backwards compatibility
-   - Add deprecations properly (no `[!!!]` for deprecations)
+   - Add deprecations properly with `trigger_error()` (no `[!!!]` for deprecations)
+   - For breaking changes: Document impact on extension developers
+
+**Real-world insight**: Reviewers expect architectural alignment with TYPO3 framework patterns.
+Don't reinvent what the framework provides. Study `Services.yaml` patterns and use dependency
+injection over manual instance management.
 
 4. **Write tests**:
    - Unit tests for isolated functionality
@@ -568,24 +575,57 @@ Copy and save the review URL!
 
 ## Phase 7: Review & Update Cycle
 
+### Understanding Review Expectations
+
+**IMPORTANT**: Multiple revisions (patch sets) are NORMAL and expected in TYPO3 Core.
+
+**Real-world examples** (from actual merged patches):
+- Extbase FileUpload tests: 24 patch sets
+- Record API breaking change: 14 patch sets
+- DI refactoring: 9 patch sets
+- Pagetree performance fix: 7 patch sets
+
+**What causes multiple revisions**:
+- CI failures requiring fixes
+- Rebases due to main branch updates
+- Code quality improvements from reviewer feedback
+- Architectural refinements suggested by core team
+- Edge case handling
+- Scope adjustments (e.g., backport constraints)
+
+**Mindset**: Each revision makes your patch better. High revision counts show:
+- Responsiveness to feedback
+- Collaborative improvement
+- Thorough vetting process
+- Learning framework patterns
+
+Load `references/gerrit-review-patterns.md` for comprehensive real-world review insights.
+
 ### Responding to Feedback
 
 When reviewers request changes:
 
 1. **Read feedback carefully**: Understand what needs to change
-2. **Make requested changes**: Update code locally
-3. **Amend the commit**:
+2. **Respond to every comment**: Even if just "Done" or "Fixed in PS X"
+3. **Make requested changes**: Update code locally
+4. **Use appropriate skill**:
+   - Code quality issues → typo3-conformance-skill
+   - Test failures → typo3-testing-skill
+5. **Test thoroughly**: Validate changes work
+6. **Amend the commit**:
    ```bash
    git add .
    git commit --amend
    # Keep the Change-Id unchanged!
    ```
-4. **Push updated patch**:
+7. **Push updated patch**:
    ```bash
    git push origin HEAD:refs/for/main
    ```
 
 This creates a new patchset on the existing review.
+
+**Pro tip**: Don't take high revision counts personally - they're a sign of thorough review, not failure.
 
 ### Rebasing Your Patch
 
