@@ -190,6 +190,7 @@ Full troubleshooting: `references/troubleshooting.md`
 | Review patterns | `references/gerrit-review-patterns.md` |
 | Forge API | `references/forge-api.md` |
 | Troubleshooting | `references/troubleshooting.md` |
+| Modern TYPO3 patterns | `references/modern-typo3-patterns.md` |
 
 ## External Resources
 
