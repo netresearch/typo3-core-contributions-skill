@@ -1,0 +1,20 @@
+{
+  "name": "netresearch/agent-typo3-core-contributions",
+  "description": "Guide contributors through the complete TYPO3 Core contribution workflow from account setup to patch submission for both code and documentation contributions. Use when working with TYPO3 Forge issues,",
+  "type": "ai-agent-skill",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Netresearch DTT GmbH",
+      "email": "plugins@netresearch.de",
+      "homepage": "https://www.netresearch.de/",
+      "role": "Manufacturer"
+    }
+  ],
+  "require": {
+    "netresearch/composer-agent-skill-plugin": "*"
+  },
+  "extra": {
+    "ai-agent-skill": "SKILL.md"
+  }
+}
