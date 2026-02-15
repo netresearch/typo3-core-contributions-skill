@@ -1,6 +1,6 @@
 ---
 name: typo3-core-contributions
-description: "Agent Skill: TYPO3 Core contribution workflow. Use when working with Forge issues, submitting patches to Gerrit, or contributing docs. By Netresearch."
+description: "Use when analyzing TYPO3 Forge issues, submitting patches to Gerrit, or contributing documentation to TYPO3 Core."
 ---
 
 # TYPO3 Core Contributions
