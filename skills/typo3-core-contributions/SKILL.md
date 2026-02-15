@@ -1,6 +1,6 @@
 ---
 name: typo3-core-contributions
-description: "Use when working with TYPO3 Forge issues, submitting patches to Gerrit, or contributing documentation to TYPO3 Core."
+description: "Use when analyzing TYPO3 Forge issues, submitting patches to Gerrit, or contributing documentation to TYPO3 Core."
 ---
 
 # TYPO3 Core Contributions
