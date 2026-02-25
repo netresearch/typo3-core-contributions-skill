@@ -1,5 +1,5 @@
 {
-  "name": "netresearch/agent-typo3-core-contributions",
+  "name": "netresearch/typo3-core-contributions-skill",
   "description": "Netresearch AI skill for TYPO3 Core contribution workflow and patch submission",
   "type": "ai-agent-skill",
   "license": "MIT",
@@ -13,6 +13,9 @@
   ],
   "require": {
     "netresearch/composer-agent-skill-plugin": "*"
+  },
+  "replace": {
+    "netresearch/agent-typo3-core-contributions": "self.version"
   },
   "extra": {
     "ai-agent-skill": "skills/typo3-core-contributions/SKILL.md"
