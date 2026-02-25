@@ -15,6 +15,6 @@
     "netresearch/composer-agent-skill-plugin": "*"
   },
   "extra": {
-    "ai-agent-skill": "SKILL.md"
+    "ai-agent-skill": "skills/typo3-core-contributions/SKILL.md"
   }
 }
