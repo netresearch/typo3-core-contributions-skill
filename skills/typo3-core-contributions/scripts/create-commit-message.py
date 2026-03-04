@@ -11,14 +11,14 @@ from typing import Optional
 
 
 COMMIT_TYPES = {
-    'BUGFIX': 'Bug fixes',
-    'FEATURE': 'New features (main branch only)',
-    'TASK': 'Refactoring, cleanup, miscellaneous',
-    'DOCS': 'Documentation changes',
-    'SECURITY': 'Security vulnerability fixes'
+    "BUGFIX": "Bug fixes",
+    "FEATURE": "New features (main branch only)",
+    "TASK": "Refactoring, cleanup, miscellaneous",
+    "DOCS": "Documentation changes",
+    "SECURITY": "Security vulnerability fixes",
 }
 
-BREAKING_CHANGE_PREFIX = '[!!!]'
+BREAKING_CHANGE_PREFIX = "[!!!]"
 
 
 def validate_subject(subject: str, has_breaking: bool) -> tuple[bool, Optional[str]]:
@@ -29,19 +29,25 @@ def validate_subject(subject: str, has_breaking: bool) -> tuple[bool, Optional[s
         return False, "Subject line exceeds 72 characters (absolute limit)"
 
     if len(subject) > max_length:
-        return False, f"Subject line exceeds {max_length} characters (recommended limit)"
+        return (
+            False,
+            f"Subject line exceeds {max_length} characters (recommended limit)",
+        )
 
     if not subject[0].isupper():
         return False, "Subject must start with uppercase letter"
 
-    if subject.endswith('.'):
+    if subject.endswith("."):
         return False, "Subject should not end with a period"
 
     # Check for imperative mood (simple heuristic)
-    past_tense_endings = ['ed', 'ing']
+    past_tense_endings = ["ed", "ing"]
     first_word = subject.split()[0].lower()
     if any(first_word.endswith(end) for end in past_tense_endings):
-        return False, f"Use imperative mood ('{first_word}' appears to be past/present continuous tense)"
+        return (
+            False,
+            f"Use imperative mood ('{first_word}' appears to be past/present continuous tense)",
+        )
 
     return True, None
 
@@ -57,7 +63,7 @@ def wrap_text(text: str, width: int = 72) -> str:
         word_length = len(word)
         if current_length + word_length + len(current_line) > width:
             if current_line:
-                lines.append(' '.join(current_line))
+                lines.append(" ".join(current_line))
                 current_line = [word]
                 current_length = word_length
         else:
@@ -65,18 +71,18 @@ def wrap_text(text: str, width: int = 72) -> str:
             current_length += word_length
 
     if current_line:
-        lines.append(' '.join(current_line))
+        lines.append(" ".join(current_line))
 
-    return '\n'.join(lines)
+    return "\n".join(lines)
 
 
 def parse_releases(releases_str: str) -> list[str]:
     """Parse comma-separated release versions"""
-    releases = [r.strip() for r in releases_str.split(',')]
+    releases = [r.strip() for r in releases_str.split(",")]
     # Validate format
     valid_releases = []
     for release in releases:
-        if release == 'main' or re.match(r'^\d+\.\d+$', release):
+        if release == "main" or re.match(r"^\d+\.\d+$", release):
             valid_releases.append(release)
         else:
             print(f"Warning: Invalid release format '{release}', skipping")
@@ -85,25 +91,32 @@ def parse_releases(releases_str: str) -> list[str]:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate TYPO3-compliant commit messages',
+        description="Generate TYPO3-compliant commit messages",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog='''
+        epilog="""
 Examples:
   %(prog)s --issue 105737 --type BUGFIX
   %(prog)s --issue 105737 --type FEATURE --breaking
   %(prog)s --type TASK --related 12345,12346
-        '''
+        """,
     )
 
-    parser.add_argument('--issue', type=int, help='Forge issue number')
-    parser.add_argument('--related', help='Related issue numbers (comma-separated)')
-    parser.add_argument('--type', choices=COMMIT_TYPES.keys(), required=True,
-                       help='Commit type')
-    parser.add_argument('--breaking', action='store_true',
-                       help='Mark as breaking change (adds [!!!] prefix)')
-    parser.add_argument('--releases', default='main',
-                       help='Target releases (comma-separated, e.g., "main, 13.4, 12.4")')
-    parser.add_argument('--output', help='Output file (default: print to stdout)')
+    parser.add_argument("--issue", type=int, help="Forge issue number")
+    parser.add_argument("--related", help="Related issue numbers (comma-separated)")
+    parser.add_argument(
+        "--type", choices=COMMIT_TYPES.keys(), required=True, help="Commit type"
+    )
+    parser.add_argument(
+        "--breaking",
+        action="store_true",
+        help="Mark as breaking change (adds [!!!] prefix)",
+    )
+    parser.add_argument(
+        "--releases",
+        default="main",
+        help='Target releases (comma-separated, e.g., "main, 13.4, 12.4")',
+    )
+    parser.add_argument("--output", help="Output file (default: print to stdout)")
 
     args = parser.parse_args()
 
@@ -135,7 +148,7 @@ Examples:
     except EOFError:
         pass
 
-    description = '\n'.join(description_lines).strip()
+    description = "\n".join(description_lines).strip()
     if description:
         description = wrap_text(description)
 
@@ -151,7 +164,7 @@ Examples:
         message += f"Resolves: #{args.issue}\n"
 
     if args.related:
-        related_issues = [f"#{num.strip()}" for num in args.related.split(',')]
+        related_issues = [f"#{num.strip()}" for num in args.related.split(",")]
         for issue in related_issues:
             message += f"Related: {issue}\n"
 
@@ -160,16 +173,16 @@ Examples:
         message += f"Releases: {', '.join(releases)}\n"
 
     # Output
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Generated Commit Message:")
-    print("="*60)
+    print("=" * 60)
     print(message)
-    print("="*60)
+    print("=" * 60)
     print("\nNote: Change-Id will be added automatically by git hook")
-    print("="*60)
+    print("=" * 60)
 
     if args.output:
-        with open(args.output, 'w') as f:
+        with open(args.output, "w") as f:
             f.write(message)
         print(f"\n✓ Commit message saved to: {args.output}")
         print(f"  Use: git commit -F {args.output}")
@@ -182,5 +195,5 @@ Examples:
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())
