@@ -61,31 +61,40 @@ Ensure you have:
 
 ## Installation
 
-### Option 1: Via Netresearch Marketplace (Recommended)
+### Marketplace (Recommended)
+
+Add the [Netresearch marketplace](https://github.com/netresearch/claude-code-marketplace) once, then browse and install skills:
 
 ```bash
+# Claude Code
 /plugin marketplace add netresearch/claude-code-marketplace
 ```
 
-Then browse skills with `/plugin`.
+### npx ([skills.sh](https://skills.sh))
 
-### Option 2: Download Release
+Install with any [Agent Skills](https://agentskills.io)-compatible agent:
 
-Download the [latest release](https://github.com/netresearch/typo3-core-contributions-skill/releases/latest) and extract to `~/.claude/skills/typo3-core-contributions/`
+```bash
+npx skills add https://github.com/netresearch/typo3-core-contributions-skill --skill typo3-core-contributions
+```
 
-### Option 3: Manual Installation
+### Download Release
 
-Use this skill in Claude Code by referencing it from your project's skill configuration.
+Download the [latest release](https://github.com/netresearch/typo3-core-contributions-skill/releases/latest) and extract to your agent's skills directory.
 
-### Usage
+### Git Clone
 
-The skill activates automatically when working on TYPO3 Core contributions. It guides you through:
+```bash
+git clone https://github.com/netresearch/typo3-core-contributions-skill.git
+```
 
-1. **Setup Phase**: Prerequisites verification, environment configuration
-2. **Development Phase**: Code changes, testing, validation
-3. **Submission Phase**: Gerrit patch submission, CI monitoring, WIP management
-4. **Review Phase**: Addressing reviewer feedback, iterating on changes
+### Composer (PHP Projects)
 
+```bash
+composer require netresearch/typo3-core-contributions-skill
+```
+
+Requires [netresearch/composer-agent-skill-plugin](https://github.com/netresearch/composer-agent-skill-plugin).
 ## Scope
 
 **This skill covers**: TYPO3 Core code contributions (PHP, JavaScript, CSS, tests)
