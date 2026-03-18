@@ -1,6 +1,6 @@
 ---
 name: typo3-core-contributions
-description: "Use when analyzing TYPO3 Forge issues, submitting patches to Gerrit, or contributing documentation to TYPO3 Core."
+description: "Use when analyzing TYPO3 Forge issues, submitting patches to Gerrit, contributing core bug fixes, documentation contributions, cherry-pick workflows, or CI debugging on Gerrit. Also triggers on: forge.typo3.org, core patch, Gerrit review, TYPO3 Core contribution."
 ---
 
 # TYPO3 Core Contributions
@@ -84,12 +84,6 @@ Releases: main, 13.4, 12.4
 ```
 
 **Types**: `[BUGFIX]`, `[FEATURE]`, `[TASK]`, `[DOCS]`, `[SECURITY]`, `[!!!]`
-
-## Related Skills
-
-- **typo3-ddev-skill**: Development environment
-- **typo3-testing-skill**: Test writing
-- **typo3-conformance-skill**: Code quality validation
 
 ## References
 

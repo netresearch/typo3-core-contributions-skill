@@ -1,0 +1,34 @@
+[
+  {
+    "name": "prepare-gerrit-patch",
+    "prompt": "Prepare a patch for TYPO3 core via Gerrit",
+    "assertions": [
+      {
+        "type": "tool_use",
+        "tool": "Bash",
+        "description": "Uses git commands for patch preparation"
+      },
+      {
+        "type": "content_contains",
+        "value": "Gerrit",
+        "description": "References Gerrit workflow"
+      }
+    ]
+  },
+  {
+    "name": "analyze-forge-issue",
+    "prompt": "Analyze a Forge issue",
+    "assertions": [
+      {
+        "type": "tool_use",
+        "tool": "Read",
+        "description": "Reads relevant source code"
+      },
+      {
+        "type": "content_contains",
+        "value": "Forge",
+        "description": "References TYPO3 Forge issue tracker"
+      }
+    ]
+  }
+]
