@@ -5,85 +5,68 @@ description: "Use when analyzing TYPO3 Forge issues, submitting patches to Gerri
 
 # TYPO3 Core Contributions
 
-Guide for TYPO3 Core contribution workflow from account setup to patch submission.
+Guide for contributing to TYPO3 Core: Forge issues, Gerrit patches, CI debugging, and review workflows.
 
 ## When to Use
 
-- Forge issue URLs (e.g., `https://forge.typo3.org/issues/105737`)
-- Contributing patches, fixing TYPO3 bugs
-- Gerrit review workflow, rebasing, CI failures
+- Forge issue analysis or creation (`forge.typo3.org/issues/*`)
+- Patch submission, CI debugging, Gerrit review workflow
+- Commit message formatting, cherry-picks, rebasing
 
 ## Prerequisites
 
-```bash
-scripts/verify-prerequisites.sh
-```
+Run `scripts/verify-prerequisites.sh` to check: TYPO3.org account, Gerrit SSH (`ssh -p 29418 <user>@review.typo3.org`), Git email matching Gerrit. See `references/account-setup.md`.
 
-Check: TYPO3.org account, Gerrit SSH, Git config (email must match Gerrit!)
+## Workflow
 
-## Workflow Overview
-
-1. **Setup**: Account → Environment (`scripts/setup-typo3-coredev.sh`)
-2. **Branch**: `git checkout -b feature/105737-fix-description`
-3. **Analyze Issue**: Understand deeply before coding (see below)
-4. **Develop**: Implement, write tests, validate with typo3-conformance-skill
-5. **Verify CI**: Run full test suite locally, ensure all checks pass
-6. **Commit**: Follow format, include `Resolves: #<issue>` + `Releases:`
-7. **Submit**: `git push origin HEAD:refs/for/main` (starts as WIP)
-8. **CI Check**: Wait for Gerrit CI, fix ALL failures before marking ready
-9. **Mark Ready**: Remove WIP state only when all CI jobs pass
-10. **Update**: Amend + push (preserve Change-Id!)
-11. **Verify Releases**: After approval, test in all target branches
-
-## Phase 3: Analyze Issue Deeply
-
-**Before writing any code**, thoroughly understand the problem:
-
-1. **What is broken?** - Identify the exact behavior vs expected behavior
-2. **Why is it broken?** - Trace the root cause in the codebase
-3. **Reproduction steps** - Document minimal steps to reproduce
-4. **Affected versions** - Check which branches have the issue (main, 13.4, 12.4)
-5. **Related code** - Review existing tests and similar implementations
-6. **Edge cases** - Consider what else might be affected
-
-**This analysis prevents wasted time** on incomplete fixes or patches that don't address the actual problem.
-
-## Phase 5 & 8: CI Verification
-
-**Before marking ready for review**:
-
-1. Run tests locally: `./Build/Scripts/runTests.sh -s unit && ./Build/Scripts/runTests.sh -s functional`
-2. Check code style: `./Build/Scripts/cglFixMyCommit.sh`
-3. Run PHPStan: `./Build/Scripts/runTests.sh -s phpstan`
-4. After push: Wait for ALL Gerrit CI jobs to complete
-5. **Read actual job logs** for any failures - never guess!
-6. Fix ALL issues in one patchset before marking ready
-
-See `references/gerrit-workflow.md` for CI debugging details.
-
-## Phase 11: Verify in Target Branches
-
-**After receiving +2 approval**, before merge:
-
-1. Check your `Releases:` line (e.g., `main, 13.4, 12.4`)
-2. Cherry-pick to each target branch locally
-3. Verify fix works on each version
-4. Ensure no version-specific issues (API differences, etc.)
-
-This prevents broken backports and ensures the fix works everywhere it's needed.
+1. **Setup**: Account + environment (`scripts/setup-typo3-coredev.sh`, `references/ddev-setup-workflow.md`)
+2. **Branch**: `git checkout -b feature/<issue>-description`
+3. **Analyze**: Understand root cause, reproduction steps, affected versions before coding
+4. **Develop**: Implement fix + tests, validate with typo3-conformance-skill
+5. **Commit**: Follow format below, include `Resolves: #<issue>` + `Releases:`
+6. **Push**: `git push origin HEAD:refs/for/main` (starts as WIP)
+7. **CI**: Wait for all jobs. Read actual GitLab logs at `git.typo3.org/typo3/CI/cms/-/jobs/<id>`. Fix ALL failures in one amend+push
+8. **Ready**: Mark ready via `git push origin HEAD:refs/for/main%ready` or Gerrit UI "Start Review"
+9. **Review**: Address feedback, amend commit, preserve Change-Id. Fetch reviewer's patchset first to preserve their message edits: `git fetch origin refs/changes/XX/NNNNN/N && git reset --soft FETCH_HEAD`
+10. **Update**: `git commit --amend && git push origin HEAD:refs/for/main`
 
 ## Commit Format
 
 ```
-[TYPE] Subject line (imperative, max 52 chars)
+[TYPE] Subject (imperative mood, max 52 chars)
 
-Description explaining how and why.
+How and why (not what). Wrap at 72 chars.
 
 Resolves: #12345
 Releases: main, 13.4, 12.4
 ```
 
-**Types**: `[BUGFIX]`, `[FEATURE]`, `[TASK]`, `[DOCS]`, `[SECURITY]`, `[!!!]`
+**Types**: `[BUGFIX]`, `[FEATURE]` (main only), `[TASK]`, `[DOCS]`, `[SECURITY]`
+**Breaking**: `[!!!][TYPE]` prefix, `Releases: main` only
+**Required**: Every commit MUST have `Resolves:` (not just `Related:`)
+
+## CI Debugging
+
+Read ALL failing job logs (never guess). Common jobs: `cgl pre-merge` (code style), `phpstan` (static analysis), `unit`/`functional` (tests). Fix all in one patchset. Local checks:
+
+```bash
+./Build/Scripts/runTests.sh -s unit && ./Build/Scripts/runTests.sh -s functional
+./Build/Scripts/cglFixMyCommit.sh
+./Build/Scripts/runTests.sh -s phpstan
+```
+
+## Key Operations
+
+| Task | Command |
+|------|---------|
+| Push to Gerrit | `git push origin HEAD:refs/for/main` |
+| Mark ready | `git push origin HEAD:refs/for/main%ready` |
+| Set WIP | `git push origin HEAD:refs/for/main%wip` |
+| Rebase | `git fetch origin && git rebase origin/main` |
+| Cherry-pick patch | `git fetch origin refs/changes/XX/NNNNN/N && git cherry-pick FETCH_HEAD` |
+| Install hook | `cp Build/git-hooks/commit-msg .git/hooks/ && chmod +x .git/hooks/commit-msg` |
+| Fix email mismatch | `GIT_COMMITTER_EMAIL="registered@email" git commit --amend --no-edit` |
+| Forge API | `scripts/create-forge-issue.sh`, `references/forge-api.md` |
 
 ## References
 
@@ -92,8 +75,9 @@ Releases: main, 13.4, 12.4
 | Account setup | `references/account-setup.md` |
 | Commit format | `references/commit-message-format.md` |
 | Gerrit workflow | `references/gerrit-workflow.md` |
+| Review patterns | `references/gerrit-review-patterns.md` |
+| Modern patterns | `references/modern-typo3-patterns.md` |
+| DDEV setup | `references/ddev-setup-workflow.md` |
+| Forge API | `references/forge-api.md` |
+| Commit hook | `references/commit-msg-hook.md` |
 | Troubleshooting | `references/troubleshooting.md` |
-
----
-
-> **Contributing:** https://github.com/netresearch/typo3-core-contributions-skill

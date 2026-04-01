@@ -1,33 +1,431 @@
 [
   {
-    "name": "prepare-gerrit-patch",
-    "prompt": "Prepare a patch for TYPO3 core via Gerrit",
+    "name": "verify-prerequisites",
+    "prompt": "I want to start contributing to TYPO3 Core. What accounts and tools do I need, and how do I verify everything is set up correctly?",
     "assertions": [
       {
-        "type": "tool_use",
-        "tool": "Bash",
-        "description": "Uses git commands for patch preparation"
+        "type": "content_contains",
+        "value": "typo3.org",
+        "description": "Mentions TYPO3.org account"
       },
       {
         "type": "content_contains",
-        "value": "Gerrit",
-        "description": "References Gerrit workflow"
+        "value": "review.typo3.org",
+        "description": "Mentions Gerrit at review.typo3.org"
+      },
+      {
+        "type": "content_contains",
+        "value": "29418",
+        "description": "References Gerrit SSH port"
+      },
+      {
+        "type": "content_contains",
+        "value": "verify-prerequisites",
+        "description": "References the prerequisite verification script"
+      }
+    ]
+  },
+  {
+    "name": "setup-ddev-environment",
+    "prompt": "Set up a DDEV-based TYPO3 Core development environment for v14 with PHP 8.4",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "ddev config",
+        "description": "Uses ddev config commands"
+      },
+      {
+        "type": "content_contains",
+        "value": "COMPOSER_ROOT_VERSION",
+        "description": "Sets COMPOSER_ROOT_VERSION for dev branch"
+      },
+      {
+        "type": "content_contains",
+        "value": "commit-msg",
+        "description": "Installs commit-msg hook for Gerrit"
+      },
+      {
+        "type": "content_contains",
+        "value": "pushurl",
+        "description": "Configures Gerrit push URL"
       }
     ]
   },
   {
     "name": "analyze-forge-issue",
-    "prompt": "Analyze a Forge issue",
+    "prompt": "Analyze Forge issue https://forge.typo3.org/issues/105737 and explain how to approach fixing it",
     "assertions": [
       {
-        "type": "tool_use",
-        "tool": "Read",
-        "description": "Reads relevant source code"
+        "type": "content_contains",
+        "value": "forge.typo3.org",
+        "description": "References Forge issue tracker"
       },
       {
         "type": "content_contains",
-        "value": "Forge",
-        "description": "References TYPO3 Forge issue tracker"
+        "value": "root cause",
+        "description": "Discusses understanding the root cause"
+      },
+      {
+        "type": "content_contains",
+        "value": "branch",
+        "description": "Mentions checking affected branches"
+      }
+    ]
+  },
+  {
+    "name": "create-forge-issue",
+    "prompt": "Create a Forge issue for a bug in TYPO3 indexed_search where the indexer crashes on malformed UTF-8 content in PHP 8.2",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "forge.typo3.org",
+        "description": "References Forge URL"
+      },
+      {
+        "type": "content_contains",
+        "value": "tracker_id",
+        "description": "Uses correct tracker field for bug"
+      },
+      {
+        "type": "content_contains",
+        "value": "FORGE_API_KEY",
+        "description": "References API key environment variable"
+      }
+    ]
+  },
+  {
+    "name": "format-bugfix-commit-message",
+    "prompt": "Write a commit message for a bugfix that prevents a null pointer exception in the indexed search indexer, resolving Forge issue #105737, targeting main, 13.4, and 12.4",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "[BUGFIX]",
+        "description": "Uses correct BUGFIX commit type"
+      },
+      {
+        "type": "content_contains",
+        "value": "Resolves: #105737",
+        "description": "Includes proper Resolves footer tag"
+      },
+      {
+        "type": "content_contains",
+        "value": "Releases: main, 13.4, 12.4",
+        "description": "Includes Releases line with all target versions"
+      }
+    ]
+  },
+  {
+    "name": "format-breaking-change-commit",
+    "prompt": "Write a commit message for dropping PHP 7.4 support in TYPO3 Core, issue #99888",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "[!!!]",
+        "description": "Uses breaking change prefix"
+      },
+      {
+        "type": "content_contains",
+        "value": "Resolves: #99888",
+        "description": "Includes Resolves footer"
+      },
+      {
+        "type": "content_contains",
+        "value": "Releases: main",
+        "description": "Breaking changes target main only"
+      }
+    ]
+  },
+  {
+    "name": "validate-commit-message",
+    "prompt": "This commit message has errors, fix them:\n\n[BUGFIX] fixed the cache invalidation bug in frontend rendering module.\n\nThis fixes the issue.\n\nRelated: #12345\nReleases: main",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "imperative",
+        "description": "Identifies past tense issue and suggests imperative mood"
+      },
+      {
+        "type": "content_contains",
+        "value": "Resolves",
+        "description": "Points out missing required Resolves tag"
+      },
+      {
+        "type": "content_contains",
+        "value": "period",
+        "description": "Notes trailing period should be removed"
+      }
+    ]
+  },
+  {
+    "name": "push-to-gerrit",
+    "prompt": "I've committed my bugfix. How do I submit it to Gerrit for review?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "refs/for/main",
+        "description": "Uses correct Gerrit ref for push"
+      },
+      {
+        "type": "content_contains",
+        "value": "WIP",
+        "description": "Mentions that patches start as WIP"
+      },
+      {
+        "type": "content_contains",
+        "value": "Change-Id",
+        "description": "Mentions Change-Id preservation"
+      }
+    ]
+  },
+  {
+    "name": "debug-ci-failures",
+    "prompt": "My Gerrit patch has 3 failing CI jobs: cgl pre-merge, phpstan php 8.2 pre-merge, and unit php 8.2 pre-merge. How do I debug and fix them?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "git.typo3.org",
+        "description": "References GitLab CI for log access"
+      },
+      {
+        "type": "content_contains",
+        "value": "amend",
+        "description": "Advises amending the commit with fixes"
+      },
+      {
+        "type": "content_contains",
+        "value": "one patchset",
+        "description": "Recommends fixing all issues in one patchset"
+      }
+    ]
+  },
+  {
+    "name": "rebase-with-conflicts",
+    "prompt": "Gerrit shows my patch needs rebasing and there are merge conflicts. Walk me through resolving this.",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "git rebase origin/main",
+        "description": "Shows the rebase command"
+      },
+      {
+        "type": "content_contains",
+        "value": "conflict",
+        "description": "Explains conflict resolution"
+      },
+      {
+        "type": "content_contains",
+        "value": "rebase --continue",
+        "description": "Shows how to continue after resolving"
+      },
+      {
+        "type": "content_contains",
+        "value": "refs/for/main",
+        "description": "Shows final push to Gerrit"
+      }
+    ]
+  },
+  {
+    "name": "mark-patch-ready",
+    "prompt": "All CI tests pass on my WIP patch. How do I mark it as ready for review?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "%ready",
+        "description": "Shows the %ready push flag"
+      },
+      {
+        "type": "content_contains",
+        "value": "Start Review",
+        "description": "Mentions the web UI alternative"
+      }
+    ]
+  },
+  {
+    "name": "cherry-pick-patch",
+    "prompt": "I need to test someone else's Gerrit patch locally. How do I cherry-pick change #12345 patchset 3?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "refs/changes",
+        "description": "Uses correct Gerrit refs/changes path"
+      },
+      {
+        "type": "content_contains",
+        "value": "cherry-pick",
+        "description": "Uses git cherry-pick command"
+      },
+      {
+        "type": "content_contains",
+        "value": "FETCH_HEAD",
+        "description": "References FETCH_HEAD for cherry-pick"
+      }
+    ]
+  },
+  {
+    "name": "respond-to-review",
+    "prompt": "A reviewer asked me to use dependency injection instead of manual instantiation, and to add type hints. How do I update my patch?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "amend",
+        "description": "Uses git commit --amend to update"
+      },
+      {
+        "type": "content_contains",
+        "value": "Change-Id",
+        "description": "Warns to preserve Change-Id"
+      },
+      {
+        "type": "content_contains",
+        "value": "patchset",
+        "description": "Explains new patchset creation"
+      }
+    ]
+  },
+  {
+    "name": "preserve-reviewer-changes",
+    "prompt": "A reviewer edited my commit message on Gerrit (added backticks and Releases line). How do I push code changes without losing their message edits?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "refs/changes",
+        "description": "Fetches latest patchset from Gerrit"
+      },
+      {
+        "type": "content_contains",
+        "value": "FETCH_HEAD",
+        "description": "References FETCH_HEAD"
+      },
+      {
+        "type": "content_contains",
+        "value": "reset --soft",
+        "description": "Uses git reset --soft to preserve reviewer message"
+      }
+    ]
+  },
+  {
+    "name": "fix-email-mismatch",
+    "prompt": "Gerrit rejected my push with 'email address is not registered in your account'. My Git uses info@example.de but Gerrit has sebastian@example.com. How do I fix this?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "committer",
+        "description": "Explains the committer vs author distinction"
+      },
+      {
+        "type": "content_contains",
+        "value": "GIT_COMMITTER_EMAIL",
+        "description": "Shows how to change committer email"
+      },
+      {
+        "type": "content_contains",
+        "value": "review.typo3.org/settings",
+        "description": "References Gerrit email settings page"
+      }
+    ]
+  },
+  {
+    "name": "install-commit-msg-hook",
+    "prompt": "My commit is missing a Change-Id. How do I install the commit-msg hook and fix my existing commit?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "Build/git-hooks/commit-msg",
+        "description": "References the hook source location"
+      },
+      {
+        "type": "content_contains",
+        "value": "chmod",
+        "description": "Makes hook executable"
+      },
+      {
+        "type": "content_contains",
+        "value": "amend",
+        "description": "Amends commit to trigger hook"
+      }
+    ]
+  },
+  {
+    "name": "feature-commit-main-only",
+    "prompt": "Write a commit message for a new TYPO3 feature adding WebP image support, issue #98765",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "[FEATURE]",
+        "description": "Uses FEATURE commit type"
+      },
+      {
+        "type": "content_contains",
+        "value": "Releases: main",
+        "description": "Features target main only"
+      },
+      {
+        "type": "content_contains",
+        "value": "Resolves: #98765",
+        "description": "Includes required Resolves tag"
+      }
+    ]
+  },
+  {
+    "name": "documentation-contribution",
+    "prompt": "I want to contribute a documentation fix to TYPO3 Core. What's different about DOCS commits?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "[DOCS]",
+        "description": "Uses DOCS commit type"
+      },
+      {
+        "type": "content_contains",
+        "value": "Resolves",
+        "description": "Mentions Resolves is still required"
+      },
+      {
+        "type": "content_contains",
+        "value": "Gerrit",
+        "description": "Same Gerrit workflow applies"
+      }
+    ]
+  },
+  {
+    "name": "troubleshoot-ssh-connection",
+    "prompt": "I get 'Permission denied (publickey)' when trying to push to Gerrit. How do I fix SSH access?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "ssh-keygen",
+        "description": "Shows SSH key generation"
+      },
+      {
+        "type": "content_contains",
+        "value": "review.typo3.org/settings",
+        "description": "Points to Gerrit SSH key settings"
+      },
+      {
+        "type": "content_contains",
+        "value": "29418",
+        "description": "References correct Gerrit port"
+      }
+    ]
+  },
+  {
+    "name": "handle-multiple-failing-jobs",
+    "prompt": "My Gerrit CI pipeline has 5 failing jobs. Should I fix them one at a time or all at once?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "all",
+        "description": "Fix ALL issues, not one at a time"
+      },
+      {
+        "type": "content_contains",
+        "value": "amend",
+        "description": "Amend single commit with all fixes"
+      },
+      {
+        "type": "content_contains",
+        "value": "log",
+        "description": "Read actual job logs to understand failures"
       }
     ]
   }
