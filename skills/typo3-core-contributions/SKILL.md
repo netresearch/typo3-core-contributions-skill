@@ -15,11 +15,11 @@ Guide for contributing to TYPO3 Core: Forge issues, Gerrit patches, CI debugging
 
 ## Prerequisites
 
-Run `scripts/verify-prerequisites.sh` to check: TYPO3.org account, Gerrit SSH (`ssh -p 29418 <user>@review.typo3.org`), Git email matching Gerrit. See `references/account-setup.md`.
+Run `${CLAUDE_SKILL_DIR}/scripts/verify-prerequisites.sh` to check: TYPO3.org account, Gerrit SSH (`ssh -p 29418 <user>@review.typo3.org`), Git email matching Gerrit. See `references/account-setup.md`.
 
 ## Workflow
 
-1. **Setup**: Account + environment (`scripts/setup-typo3-coredev.sh`, `references/ddev-setup-workflow.md`)
+1. **Setup**: Account + environment (`${CLAUDE_SKILL_DIR}/scripts/setup-typo3-coredev.sh`, `references/ddev-setup-workflow.md`)
 2. **Branch**: `git checkout -b feature/<issue>-description`
 3. **Analyze**: Understand root cause, reproduction steps, affected versions before coding
 4. **Develop**: Implement fix + tests, validate with typo3-conformance-skill
@@ -66,7 +66,7 @@ Read ALL failing job logs (never guess). Common jobs: `cgl pre-merge` (code styl
 | Cherry-pick patch | `git fetch origin refs/changes/XX/NNNNN/N && git cherry-pick FETCH_HEAD` |
 | Install hook | `cp Build/git-hooks/commit-msg .git/hooks/ && chmod +x .git/hooks/commit-msg` |
 | Fix email mismatch | `GIT_COMMITTER_EMAIL="registered@email" git commit --amend --no-edit` |
-| Forge API | `scripts/create-forge-issue.sh`, `references/forge-api.md` |
+| Forge API | `${CLAUDE_SKILL_DIR}/scripts/create-forge-issue.sh`, `references/forge-api.md` |
 
 ## References
 
