@@ -4,11 +4,12 @@ TYPO3 Core Contribution Commit Message Generator
 Creates properly formatted commit messages following TYPO3 standards
 """
 
-import argparse
-import sys
-import re
-from typing import Optional
 
+from __future__ import annotations
+
+import argparse
+import re
+import sys
 
 COMMIT_TYPES = {
     "BUGFIX": "Bug fixes",
@@ -21,7 +22,7 @@ COMMIT_TYPES = {
 BREAKING_CHANGE_PREFIX = "[!!!]"
 
 
-def validate_subject(subject: str, has_breaking: bool) -> tuple[bool, Optional[str]]:
+def validate_subject(subject: str, has_breaking: bool) -> tuple[bool, str | None]:
     """Validate subject line against TYPO3 rules"""
     max_length = 52 if not has_breaking else 47  # Account for [!!!] prefix
 
