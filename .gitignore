@@ -20,3 +20,7 @@ Thumbs.db
 # Development files
 .env
 .env.local
+
+# Python bytecode
+__pycache__/
+*.py[cod]
