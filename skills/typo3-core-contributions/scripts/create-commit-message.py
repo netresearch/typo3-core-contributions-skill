@@ -7,7 +7,6 @@ Creates properly formatted commit messages following TYPO3 standards
 from __future__ import annotations
 
 import argparse
-import ntpath
 import re
 import sys
 from pathlib import Path
@@ -17,28 +16,20 @@ def resolve_output_file(raw: str) -> Path:
     """Confine a user-supplied output path to the working directory.
 
     The commit message belongs next to the checkout it describes, so the target
-    is a plain file name written into the current directory. The raw argument is
-    rejected outright if it is absolute, walks up with '..', or carries any
-    directory separator; what survives is joined to the working directory and
-    re-checked after resolution. Exits non-zero with the reason rather than
-    returning, so callers stay branch-free.
+    is resolved against the current directory and anything escaping it is
+    refused. That keeps a mistyped or hostile --output from writing outside the
+    tree. Exits non-zero with the reason rather than returning, so callers stay
+    branch-free.
     """
-    # Reject the tainted input before it is ever turned into a path.
-    if raw.startswith(("/", "~")) or ntpath.isabs(raw):
-        sys.exit(f"Error: --output must be a plain file name, not a path: {raw}")
-    if ".." in Path(raw).parts:
-        sys.exit(f"Error: --output must not traverse upwards: {raw}")
-    if "/" in raw or "\\" in raw:
-        sys.exit(f"Error: --output must not contain directory separators: {raw}")
-
     base = Path.cwd().resolve()
-    path = (base / Path(raw).name).resolve()
+    path = (base / Path(raw).expanduser()).resolve()
 
-    # Belt and braces: confirm the resolved path really stayed inside base.
-    if path.parent != base:
+    if not path.is_relative_to(base):
         sys.exit(f"Error: --output must stay inside {base}, got: {raw}")
     if path.is_dir():
         sys.exit(f"Error: Output path is a directory: {raw}")
+    if not path.parent.is_dir():
+        sys.exit(f"Error: Target directory does not exist: {path.parent}")
     return path
 
 
