@@ -12,20 +12,24 @@ import sys
 from pathlib import Path
 
 
-def resolve_output_file(raw: str) -> Path | None:
-    """Resolve a user-supplied output path and confirm it is safe to write.
+def resolve_output_file(raw: str) -> Path:
+    """Confine a user-supplied output path to the working directory.
 
-    Returns None (after printing the reason) when the parent directory does not
-    exist or the target is an existing directory, so a mistyped or hostile
-    --output cannot reach the filesystem unchecked.
+    The commit message belongs next to the checkout it describes, so the target
+    is resolved against the current directory and anything escaping it is
+    refused. That keeps a mistyped or hostile --output from writing outside the
+    tree. Exits non-zero with the reason rather than returning, so callers stay
+    branch-free.
     """
-    path = Path(raw).expanduser().resolve()
+    base = Path.cwd().resolve()
+    path = (base / Path(raw).expanduser()).resolve()
+
+    if not path.is_relative_to(base):
+        sys.exit(f"Error: --output must stay inside {base}, got: {raw}")
     if path.is_dir():
-        print(f"Error: Output path is a directory: {raw}")
-        return None
+        sys.exit(f"Error: Output path is a directory: {raw}")
     if not path.parent.is_dir():
-        print(f"Error: Target directory does not exist: {path.parent}")
-        return None
+        sys.exit(f"Error: Target directory does not exist: {path.parent}")
     return path
 
 
@@ -201,10 +205,7 @@ Examples:
     print("=" * 60)
 
     if args.output:
-        out_path = resolve_output_file(args.output)
-        if out_path is None:
-            return 1
-        out_path.write_text(message, encoding="utf-8")
+        resolve_output_file(args.output).write_text(message, encoding="utf-8")
         print(f"\n✓ Commit message saved to: {args.output}")
         print(f"  Use: git commit -F {args.output}")
     else:
