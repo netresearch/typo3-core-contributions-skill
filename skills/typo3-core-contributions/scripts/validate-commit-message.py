@@ -4,7 +4,6 @@ TYPO3 Commit Message Validator
 Validates commit messages against TYPO3 contribution standards
 """
 
-
 from __future__ import annotations
 
 import argparse

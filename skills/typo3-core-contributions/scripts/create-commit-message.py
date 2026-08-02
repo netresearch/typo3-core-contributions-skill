@@ -4,7 +4,6 @@ TYPO3 Core Contribution Commit Message Generator
 Creates properly formatted commit messages following TYPO3 standards
 """
 
-
 from __future__ import annotations
 
 import argparse
