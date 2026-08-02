@@ -9,9 +9,27 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from pathlib import Path
 
 VALID_TYPES = ["BUGFIX", "FEATURE", "TASK", "DOCS", "SECURITY"]
 BREAKING_PREFIX = "[!!!]"
+
+
+def resolve_input_file(raw: str) -> Path | None:
+    """Resolve a user-supplied path and confirm it is a readable regular file.
+
+    Returns None (after printing the reason) when the argument does not name an
+    existing regular file, so a mistyped or hostile --file cannot reach the
+    filesystem unchecked.
+    """
+    path = Path(raw).expanduser().resolve()
+    if not path.exists():
+        print(f"Error: File not found: {raw}")
+        return None
+    if not path.is_file():
+        print(f"Error: Not a regular file: {raw}")
+        return None
+    return path
 
 
 class CommitMessageValidator:
@@ -197,12 +215,10 @@ def main():
 
     # Get message
     if args.file:
-        try:
-            with open(args.file, "r") as f:
-                message = f.read()
-        except FileNotFoundError:
-            print(f"Error: File not found: {args.file}")
+        path = resolve_input_file(args.file)
+        if path is None:
             return 1
+        message = path.read_text(encoding="utf-8")
     elif args.message:
         message = args.message
     else:

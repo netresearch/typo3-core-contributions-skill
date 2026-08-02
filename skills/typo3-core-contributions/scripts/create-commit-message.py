@@ -9,6 +9,25 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from pathlib import Path
+
+
+def resolve_output_file(raw: str) -> Path | None:
+    """Resolve a user-supplied output path and confirm it is safe to write.
+
+    Returns None (after printing the reason) when the parent directory does not
+    exist or the target is an existing directory, so a mistyped or hostile
+    --output cannot reach the filesystem unchecked.
+    """
+    path = Path(raw).expanduser().resolve()
+    if path.is_dir():
+        print(f"Error: Output path is a directory: {raw}")
+        return None
+    if not path.parent.is_dir():
+        print(f"Error: Target directory does not exist: {path.parent}")
+        return None
+    return path
+
 
 COMMIT_TYPES = {
     "BUGFIX": "Bug fixes",
@@ -182,8 +201,10 @@ Examples:
     print("=" * 60)
 
     if args.output:
-        with open(args.output, "w") as f:
-            f.write(message)
+        out_path = resolve_output_file(args.output)
+        if out_path is None:
+            return 1
+        out_path.write_text(message, encoding="utf-8")
         print(f"\n✓ Commit message saved to: {args.output}")
         print(f"  Use: git commit -F {args.output}")
     else:
