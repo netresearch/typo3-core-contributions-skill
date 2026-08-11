@@ -5,8 +5,6 @@ description: "Use when analyzing TYPO3 Forge issues, submitting patches to Gerri
 
 # TYPO3 Core Contributions
 
-Guide for contributing to TYPO3 Core: Forge issues, Gerrit patches, CI debugging, and review workflows.
-
 ## When to Use
 
 - Forge issue analysis or creation (`forge.typo3.org/issues/*`)
@@ -22,9 +20,9 @@ Run `${CLAUDE_SKILL_DIR}/scripts/verify-prerequisites.sh` to check: TYPO3.org ac
 1. **Setup**: Account + environment (`${CLAUDE_SKILL_DIR}/scripts/setup-typo3-coredev.sh`, `references/ddev-setup-workflow.md`)
 2. **Branch**: `git checkout -b feature/<issue>-description`
 3. **Analyze**: Understand root cause, reproduction steps, affected versions before coding
-4. **Develop**: Implement fix + tests, validate with typo3-conformance-skill
+4. **Develop**: Implement fix + tests, validate with typo3-conformance-skill. Prove each test fails without the fix — see `references/proving-a-test.md`
 5. **Commit**: Follow format below, include `Resolves: #<issue>` + `Releases:`
-6. **Push**: `git push origin HEAD:refs/for/main` (starts as WIP)
+6. **Push**: `git push origin HEAD:refs/for/main%wip` — a plain push is **not** WIP; reviewers see it and vote, and amending then outdates their votes
 7. **CI**: Wait for all jobs. Read actual GitLab logs at `git.typo3.org/typo3/CI/cms/-/jobs/<id>`. Fix ALL failures in one amend+push
 8. **Ready**: Mark ready via `git push origin HEAD:refs/for/main%ready` or Gerrit UI "Start Review"
 9. **Review**: Address feedback, amend commit, preserve Change-Id. Fetch reviewer's patchset first to preserve their message edits: `git fetch origin refs/changes/XX/NNNNN/N && git reset --soft FETCH_HEAD`
@@ -59,9 +57,8 @@ Read ALL failing job logs (never guess). Common jobs: `cgl pre-merge` (code styl
 
 | Task | Command |
 |------|---------|
-| Push to Gerrit | `git push origin HEAD:refs/for/main` |
+| Push to Gerrit | `git push origin HEAD:refs/for/main%wip` |
 | Mark ready | `git push origin HEAD:refs/for/main%ready` |
-| Set WIP | `git push origin HEAD:refs/for/main%wip` |
 | Rebase | `git fetch origin && git rebase origin/main` |
 | Cherry-pick patch | `git fetch origin refs/changes/XX/NNNNN/N && git cherry-pick FETCH_HEAD` |
 | Install hook | `cp Build/git-hooks/commit-msg .git/hooks/ && chmod +x .git/hooks/commit-msg` |
@@ -80,4 +77,5 @@ Read ALL failing job logs (never guess). Common jobs: `cgl pre-merge` (code styl
 | DDEV setup | `references/ddev-setup-workflow.md` |
 | Forge API | `references/forge-api.md` |
 | Commit hook | `references/commit-msg-hook.md` |
+| Proving a test | `references/proving-a-test.md` |
 | Troubleshooting | `references/troubleshooting.md` |
