@@ -428,5 +428,63 @@
         "description": "Read actual job logs to understand failures"
       }
     ]
+  },
+  {
+    "name": "push-new-change-as-wip",
+    "prompt": "I have committed a core bugfix locally. Push it to Gerrit for the first time.",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "%wip",
+        "description": "Pushes the initial patch set as work in progress"
+      },
+      {
+        "type": "content_contains",
+        "value": "refs/for/main",
+        "description": "Uses the Gerrit review ref"
+      }
+    ],
+    "expectations": [
+      "States that a plain push to refs/for/main is immediately visible to reviewers rather than work in progress",
+      "Does not claim that a push without %wip already starts as WIP"
+    ],
+    "expected_output": "git push origin HEAD:refs/for/main%wip - with the explanation that a plain push is not work in progress: reviewers see it and vote, and amending afterwards outdates those votes."
+  },
+  {
+    "name": "subject-without-extension-key",
+    "prompt": "Write a commit message for a bugfix in EXT:form where the multi checkbox group is exposed with role=\"radiogroup\" instead of role=\"group\", resolving Forge issue #110437, targeting main and 14.3",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "Resolves: #110437",
+        "description": "Includes proper Resolves footer tag"
+      },
+      {
+        "type": "content_contains",
+        "value": "Releases: main, 14.3",
+        "description": "Targets main and the affected LTS branch only"
+      }
+    ],
+    "expectations": [
+      "The subject line does not contain the string EXT:",
+      "The subject stays within 72 characters and uses imperative mood"
+    ],
+    "expected_output": "[BUGFIX] Mark multi checkbox groups as role=\"group\"\n\nBody explaining how and why.\n\nResolves: #110437\nReleases: main, 14.3"
+  },
+  {
+    "name": "prove-test-fails-without-fix",
+    "prompt": "I added a functional test for my core patch and it passes. Is that enough before pushing to Gerrit?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "fails without",
+        "description": "Requires the test to fail with the fix reverted"
+      },
+      {
+        "type": "content_contains",
+        "value": "runTests.sh",
+        "description": "Names the command that runs the suite locally"
+      }
+    ]
   }
 ]

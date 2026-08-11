@@ -95,6 +95,19 @@ class CommitMessageValidator:
         if subject.endswith("."):
             self.errors.append("Subject line should not end with a period")
 
+        # The reference's checklist says "No extension names (EXT:) in subject".
+        # Measured over the 500 most recently merged core changes, 11 do carry
+        # one - uncommon but accepted, so this is a warning, not an error. The
+        # changed paths usually say which extension it is, and the subject
+        # budget is 52 characters.
+        if "EXT:" in subject:
+            self.warnings.append(
+                "Subject names an extension with 'EXT:'. The changed paths usually "
+                "say which extension it is - consider spending those characters on "
+                "what the change does (11 of the 500 most recently merged core "
+                "changes keep it, so this is a preference, not a rule)"
+            )
+
         # Check for imperative mood (heuristic)
         if subject_without_type:
             first_word = subject_without_type.split()[0].lower()
@@ -154,15 +167,21 @@ class CommitMessageValidator:
                                 "Use 'main' or version like '13.4'"
                             )
 
-        # Warnings for missing tags
+        # Both tags are mandatory, so both are errors rather than warnings.
+        # Resolves: the core commit-msg hook refuses the commit without it.
+        # Releases: the hook accepts a message without it, but the change cannot
+        # be merged - on change 92020 a reviewer had to add the line by hand
+        # before voting, because it decides which branches the fix reaches.
         if not has_resolves:
-            self.warnings.append(
-                "No 'Resolves: #<issue>' tag found. Required for features and tasks."
+            self.errors.append(
+                "No 'Resolves: #<issue>' tag found. Required for every commit, "
+                "regardless of type - the commit-msg hook rejects the commit without it"
             )
 
         if not has_releases:
-            self.warnings.append(
-                "No 'Releases:' tag found. Required to specify target versions."
+            self.errors.append(
+                "No 'Releases:' tag found. Required for every commit - it names the "
+                "branches the change targets, e.g. 'Releases: main, 14.3'"
             )
 
     def check_change_id(self):

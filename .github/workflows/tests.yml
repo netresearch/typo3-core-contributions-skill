@@ -1,0 +1,20 @@
+name: Skill Tests
+
+# Runs this repo's own test suite under tests/ via the skill-repo-skill
+# reusable. Without it the tests exist but nothing executes them, and the
+# scripts this skill ships to every consumer stay unexercised — which is how
+# validate-commit-message.py came to document three mandatory rules it did
+# not enforce.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions: {}
+
+jobs:
+  tests:
+    uses: netresearch/skill-repo-skill/.github/workflows/tests.yml@main
+    permissions:
+      contents: read
