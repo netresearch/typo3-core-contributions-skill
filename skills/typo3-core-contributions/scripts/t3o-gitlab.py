@@ -31,7 +31,10 @@ BROWSER_UA = (
     "(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
 )
 PLAIN_UA = "curl/8"
-WALL_MARKERS = ("anubis", "techaro", "within.website", "making sure you")
+# Markers unique to the challenge page. Deliberately NOT "anubis": the project
+# page of the anubis repository itself carries that word 107 times and would be
+# misread as a wall.
+WALL_MARKERS = ("techaro", "within.website", "making sure you")
 
 ACCESS_LEVELS = {
     0: ("no membership", "read, create issues, edit your own issue descriptions"),
@@ -196,6 +199,8 @@ def cmd_note(args: argparse.Namespace) -> None:
     text = read_text_arg(args.body, args.body_file)
     if not text:
         sys.exit("Pass --body or --body-file.")
+    if bool(args.issue) == bool(args.merge_request):
+        sys.exit("Pass exactly one of --issue or --merge-request.")
     kind = "merge_requests" if args.merge_request else "issues"
     iid = args.merge_request or args.issue
     note = call(
@@ -261,6 +266,10 @@ def fetch(url: str, agent: str) -> tuple[int, str, int, str, bool]:
         raw = error.read()
         status = error.code
         content_type = error.headers.get("Content-Type", "")
+    except urllib.error.URLError as error:
+        # DNS failure, refused connection, TLS error. A probe exists to diagnose
+        # a host, so it reports the reason instead of raising a traceback.
+        return 0, "", 0, f"unreachable: {error.reason}", False
     text = raw.decode("utf-8", errors="replace")
     lowered = text.lower()
     start = lowered.find("<title>")
@@ -275,14 +284,21 @@ def cmd_probe(args: argparse.Namespace) -> None:
     """Fingerprint a live URL so a bot-wall page is never mistaken for content."""
     print(f"{args.url}")
     verdicts = {}
+    reached = {}
     for label, agent in (("plain", PLAIN_UA), ("browser", BROWSER_UA)):
         status, content_type, size, title, walled = fetch(args.url, agent)
         verdicts[label] = walled
-        flag = "BOT WALL" if walled else "origin"
+        reached[label] = status != 0
+        flag = "unreachable" if status == 0 else ("BOT WALL" if walled else "origin")
         print(
             f"  {label:<7} : {status} {content_type.split(';')[0]:<24} "
             f"{size:>8}B  [{flag}]  {title[:60]}"
         )
+    if not any(reached.values()):
+        print(
+            "  -> Nothing was reached; the verdicts above say nothing about the site."
+        )
+        return
     if verdicts.get("browser") and not verdicts.get("plain"):
         print(
             "  -> A browser user agent gets the challenge page here. Anything "
