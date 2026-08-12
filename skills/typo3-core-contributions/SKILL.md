@@ -5,9 +5,9 @@ description: "Use when contributing to TYPO3 Core — Forge issues, Gerrit patch
 
 # TYPO3 Core Contributions
 
-## Route by host first
+## When to Use — route by host
 
-`review.typo3.org` (Gerrit), `forge.typo3.org` (Redmine) and `git.typo3.org/typo3/CI/cms` (CI logs) are **Core** — everything below applies. `git.typo3.org/services/t3o-sites/**` is plain GitLab for the t3o **sites**: no Gerrit, `refs/for/main` means nothing. Read `references/t3o-gitlab-workflow.md` first.
+`review.typo3.org` (Gerrit), `forge.typo3.org` (Redmine), `git.typo3.org/typo3/CI/cms` (CI logs) are **Core**: Forge issues, patches, review, commit format, cherry-picks, rebasing — everything below. `git.typo3.org/services/t3o-sites/**` is plain GitLab for the t3o **sites**: no Gerrit, `refs/for/main` means nothing. Read `references/t3o-gitlab-workflow.md` first.
 
 ## Prerequisites
 
@@ -23,7 +23,7 @@ Run `${CLAUDE_SKILL_DIR}/scripts/verify-prerequisites.sh`: TYPO3.org account, Ge
 6. **Push**: `git push origin HEAD:refs/for/main%wip` — a plain push is **not** WIP; reviewers vote and amending outdates their votes
 7. **CI**: wait for all jobs, read the actual logs at `git.typo3.org/typo3/CI/cms/-/jobs/<id>`, fix ALL failures in one amend+push
 8. **Ready**: `git push origin HEAD:refs/for/main%ready` or Gerrit UI "Start Review"
-9. **Review**: amend, preserve Change-Id. Fetch the reviewer's patchset first to keep their edits: `git fetch origin refs/changes/XX/NNNNN/N && git reset --soft FETCH_HEAD`
+9. **Review**: amend, preserve Change-Id. Fetch the reviewer's patchset first: `git fetch origin refs/changes/XX/NNNNN/N && git reset --soft FETCH_HEAD`
 10. **Update**: `git commit --amend && git push origin HEAD:refs/for/main`
 
 ## Commit Format
@@ -37,7 +37,7 @@ Resolves: #12345
 Releases: main, 13.4, 12.4
 ```
 
-`[BUGFIX]` `[FEATURE]` (main only) `[TASK]` `[DOCS]` `[SECURITY]`; breaking changes take `[!!!]` and `Releases: main` only. Every commit MUST carry `Resolves:`, not just `Related:`.
+`[BUGFIX]` `[FEATURE]` (main only) `[TASK]` `[DOCS]` `[SECURITY]`; breaking: `[!!!]`, `Releases: main` only. Every commit MUST carry `Resolves:`, not `Related:`.
 
 ## CI Debugging
 
