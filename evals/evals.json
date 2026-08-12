@@ -486,5 +486,126 @@
         "description": "Names the command that runs the suite locally"
       }
     ]
+  },
+  {
+    "name": "route-t3o-gitlab-not-gerrit",
+    "prompt": "I need to fix something in https://git.typo3.org/services/t3o-sites/extensions.typo3.org/ter — how do I get my change reviewed?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "merge request",
+        "description": "Uses GitLab merge requests, not Gerrit"
+      },
+      {
+        "type": "content_contains",
+        "value": "develop",
+        "description": "Targets the develop branch"
+      },
+      {
+        "type": "content_contains",
+        "value": "Draft",
+        "description": "Mentions the Draft requirement"
+      },
+      {
+        "type": "content_contains",
+        "value": "t3o-gitlab-workflow",
+        "description": "Points at the t3o GitLab reference"
+      }
+    ]
+  },
+  {
+    "name": "t3o-cannot-merge-own-request",
+    "prompt": "My merge request against services/t3o-sites/extensions.typo3.org/ter is green and I have Developer rights. Can I merge it?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "cannot merge",
+        "description": "States that you may not merge your own MR"
+      },
+      {
+        "type": "content_contains",
+        "value": "maintainer",
+        "description": "A maintainer must merge"
+      }
+    ]
+  },
+  {
+    "name": "t3o-check-access-before-planning",
+    "prompt": "I want to open a merge request against services/t3o-sites/common/t3olayout on git.typo3.org.",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "access",
+        "description": "Checks the access level first"
+      },
+      {
+        "type": "content_contains",
+        "value": "t3o-gitlab.py",
+        "description": "Uses the helper script"
+      },
+      {
+        "type": "content_contains",
+        "value": "issue",
+        "description": "Falls back to an issue carrying the diff when push is impossible"
+      }
+    ]
+  },
+  {
+    "name": "t3o-label-write-needs-readback",
+    "prompt": "I set labels on a git.typo3.org issue via the API and got HTTP 200, but the labels are not showing. What happened?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "Reporter",
+        "description": "Explains the Reporter role requirement"
+      },
+      {
+        "type": "content_contains",
+        "value": "200",
+        "description": "Explains that 200 does not mean applied"
+      },
+      {
+        "type": "content_contains",
+        "value": "read",
+        "description": "Requires reading the returned object back"
+      }
+    ]
+  },
+  {
+    "name": "anubis-challenge-not-a-finding",
+    "prompt": "I ran curl with a Chrome user agent against https://extensions.typo3.org/ and every page returns noindex,nofollow. Is the site deindexed?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "Anubis",
+        "description": "Identifies the bot wall"
+      },
+      {
+        "type": "content_contains",
+        "value": "challenge",
+        "description": "Identifies the challenge page"
+      },
+      {
+        "type": "content_contains",
+        "value": "probe",
+        "description": "Recommends fingerprinting the response"
+      }
+    ]
+  },
+  {
+    "name": "t3o-cross-project-reference-syntax",
+    "prompt": "I wrote t3olayout#678 in a comment on a ter issue at git.typo3.org and it did not turn into a link. Why?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "services/t3o-sites/common/t3olayout",
+        "description": "Requires the full project path"
+      },
+      {
+        "type": "content_contains",
+        "value": "+s",
+        "description": "Mentions the extended reference suffix"
+      }
+    ]
   }
 ]
