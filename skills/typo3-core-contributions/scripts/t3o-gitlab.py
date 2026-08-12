@@ -53,15 +53,38 @@ def token() -> str:
     return value
 
 
+def https_request(url: str, **kwargs: object) -> urllib.request.Request:
+    """Build a Request, refusing anything urllib would open besides http(s).
+
+    urllib honours `file://`, so a url that reached here from an argument could
+    otherwise read local files.
+    """
+    scheme = urllib.parse.urlsplit(url).scheme
+    if scheme not in ("http", "https"):
+        sys.exit(f"Refusing non-http(s) url: {url}")
+    return urllib.request.Request(url, **kwargs)  # type: ignore[arg-type]
+
+
+def open_checked(request: urllib.request.Request):
+    """Open a Request whose scheme https_request() has already validated.
+
+    The single place this script reaches the network, so the `file://` concern
+    behind the urllib audit rule is answered once, in https_request().
+    """
+    return urllib.request.urlopen(request)  # nosemgrep: dynamic-urllib-use-detected
+
+
 def call(path: str, method: str = "GET", body: dict | None = None) -> object:
-    request = urllib.request.Request(
+    if not path.startswith("/") or "://" in path:
+        sys.exit(f"Refusing suspicious API path: {path}")
+    request = https_request(
         f"{API}{path}",
         method=method,
         data=json.dumps(body).encode() if body is not None else None,
         headers={"PRIVATE-TOKEN": token(), "Content-Type": "application/json"},
     )
     try:
-        with urllib.request.urlopen(request) as response:
+        with open_checked(request) as response:
             return json.load(response)
     except urllib.error.HTTPError as error:
         detail = error.read().decode(errors="replace")[:400]
@@ -228,9 +251,9 @@ def cmd_link(args: argparse.Namespace) -> None:
 
 
 def fetch(url: str, agent: str) -> tuple[int, str, int, str, bool]:
-    request = urllib.request.Request(url, headers={"User-Agent": agent})
+    request = https_request(url, headers={"User-Agent": agent})
     try:
-        with urllib.request.urlopen(request) as response:
+        with open_checked(request) as response:
             raw = response.read()
             status = response.status
             content_type = response.headers.get("Content-Type", "")
