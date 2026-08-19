@@ -146,7 +146,7 @@ extbase to monitor API stability and how frequently changes are needed."
 
 A comment names one file because that is where the reviewer's eye landed, not because the survey is finished. Before implementing it, enumerate every producer of the value and every renderer that consumes it, then decide per site — including the ones you leave alone.
 
-Worked example from [phpDocumentor/guides#1353](https://github.com/phpDocumentor/guides/pull/1353): the reviewer asked for a null fallback in one HTML template. The same missing fallback sat in the TeX template, and a second producer (Markdown fenced blocks without an info string) carried the same null value, which moved an existing expectation file. Implementing the comment verbatim would have shipped a fix for one third of its own case. The TeX template turned out to need no change — null and the empty string render identically there — but that is a finding, not a non-answer.
+Worked example from [phpDocumentor/guides#1353](https://github.com/phpDocumentor/guides/pull/1353): the reviewer asked for a null fallback in one HTML template. The same missing fallback sat in the TeX template, and a second producer — Markdown fenced blocks without an info string — carried the same null value into an existing expectation file. Implementing the comment on its own would have left that second producer to surface as a red expectation in CI and the TeX template unexamined. The TeX template turned out to need no change, because null and the empty string render identically there — but that is a finding to report, not a non-answer.
 
 **Expectation**:
 - The reply states which siblings were checked and why the untouched ones stay untouched
