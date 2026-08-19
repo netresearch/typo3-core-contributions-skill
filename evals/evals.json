@@ -607,5 +607,58 @@
         "description": "Mentions the extended reference suffix"
       }
     ]
+  },
+  {
+    "name": "mutation-stays-green-check-wiring",
+    "prompt": "I reverted my fix in the working tree and the new functional test still passes. My assertion must be too weak, right?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "testExtensionsToLoad",
+        "description": "Names the property that decides which extensions the test environment loads"
+      },
+      {
+        "type": "content_contains",
+        "value": "coreExtensionsToLoad",
+        "description": "Names the core-extension counterpart"
+      },
+      {
+        "type": "content_contains",
+        "value": "loaded",
+        "description": "Points at the harness not loading the changed code before blaming the assertion"
+      }
+    ]
+  },
+  {
+    "name": "review-comment-names-one-site",
+    "prompt": "A reviewer asked me to add a null check in one template. I made that exact change. Anything else before I push the patchset?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "producer",
+        "description": "Requires enumerating every producer of the value"
+      },
+      {
+        "type": "content_contains",
+        "value": "left",
+        "description": "Requires reporting the sites checked and left alone"
+      }
+    ]
+  },
+  {
+    "name": "count-occurrences-with-git-grep",
+    "prompt": "How many places still use the old helper? I ran grep -r in my core checkout right after the functional suite and got 14 hits — can I put that number in the commit message?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "git grep",
+        "description": "Names git grep as the tracked-files-only counter"
+      },
+      {
+        "type": "content_contains",
+        "value": "typo3temp",
+        "description": "Names generated output that grep -r counts as source"
+      }
+    ]
   }
 ]
