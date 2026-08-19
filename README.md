@@ -47,7 +47,7 @@ This skill provides comprehensive guidance for contributing to TYPO3 Core, inclu
 ### 📝 Documentation
 - Gerrit workflow reference
 - Commit message format guidelines
-- Troubleshooting guide with 60+ scenarios
+- Troubleshooting guide for the Gerrit-specific failures
 - WIP state management
 
 ## Quick Start
@@ -119,7 +119,7 @@ typo3-core-contributions/
 │   ├── commit-message-format.md  # Commit message standards
 │   ├── ddev-setup-workflow.md    # DDEV environment setup
 │   ├── gerrit-workflow.md        # Complete Gerrit submission workflow
-│   └── troubleshooting.md        # 60+ troubleshooting scenarios
+│   └── troubleshooting.md        # Gerrit-specific failures and their fixes
 ├── scripts/
 │   ├── setup-typo3-coredev.sh    # Automated environment setup
 │   └── verify-prerequisites.sh   # Prerequisites checker
@@ -261,7 +261,7 @@ Recent additions:
 ### v1.1.0 (2025-10-27)
 - ✅ WIP state management (command-line and web UI)
 - ✅ CI failure investigation protocol (423 lines)
-- ✅ Comprehensive troubleshooting guide (60+ scenarios)
+- ✅ Troubleshooting guide for the Gerrit-specific failures
 - ✅ PHPStan error guidance
 - ✅ Code style enforcement patterns
 - ✅ Documentation scope clarification
