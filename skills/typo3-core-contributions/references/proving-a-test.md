@@ -30,6 +30,18 @@ Both comments are about the same property: the test must fail **in the position 
 
 5. Run the **whole test class**, not just your filter — a new fixture or a changed shared helper can break siblings.
 
+## When the mutation does not fail
+
+A test that stays green after you broke the code is not a weak assertion until you have ruled out the other explanation: the harness never loaded the code you changed. `FunctionalTestCase` builds its instance from `$coreExtensionsToLoad` and `$testExtensionsToLoad`; an extension missing from those lists is simply absent, and the test exercises the core default instead. Nothing reports this — there is no "extension not loaded" error, the assertion just quietly describes something else.
+
+Same shape outside TYPO3, where it cost a review round in [phpDocumentor/guides#1353](https://github.com/phpDocumentor/guides/pull/1353): code highlighting lives in an optional package that a project switches on in its `guides.xml`. The existing integration fixture for `literalinclude` had never switched it on, so every run rendered the fallback template — a bare `{{ node.value }}` — and a crash inside the highlighting filter could not reach it. The fixture had been green for years while never touching the code it appeared to cover. Enabling the package in the fixture's own config was what made the reverted fix fail, and it failed with the exact `TypeError` from the bug report.
+
+So when step 3 leaves the test green, check in this order: is the component registered in **this test's** environment, does the entry point you assert on reach it, and only then whether the assertion is too weak.
+
+## Counting occurrences for the report
+
+`grep -r` in a tree where the suite has run counts generated output as if it were source — `var/`, `typo3temp/`, `.Build/`, and every fixture's own output directory. `git grep` sees tracked files only. Any number that lands in a commit message or a review reply has to come from the tracked tree: a count taken from a post-run worktree was wrong by four, went into a public review comment, and had to be corrected afterwards.
+
 ## Commands
 
 ```bash
