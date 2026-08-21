@@ -134,10 +134,21 @@ the API returns the work-item form.
 
 ## CI: check whether it runs at all
 
-`ter` has `builds_access_level: disabled`. No pipeline runs for anyone — a
-`head_pipeline` of `null` on your MR is not your fault, and
-`GET /projects/:id/pipelines` may answer 403. **Verify this before promising
-that CI will catch anything**, then reproduce the gates locally.
+Ask the project, do not assume. `ter` used to have `builds_access_level:
+disabled`, and this page used to state that no pipeline runs for anyone. That
+is no longer true: as of 2026-08 the level is `private` and every merge request
+gets a pipeline of eight jobs (`test:php`, `test:typoscript`, `test:phpstan`,
+`test:rector`, `test:unit`, `build`, `layout`, `Create Badge`). Where builds
+*are* disabled, a `head_pipeline` of `null` on your MR is not your fault and
+`GET /projects/:id/pipelines` may answer 403. **Check the current value before
+promising that CI will catch anything** — `t3o-gitlab.py access <project>`
+prints it — and reproduce the gates locally when it is off.
+
+A red pipeline is not automatically your change. Both retried MRs in one 2026-08
+session failed on `The "https://api.github.com/repos/…/zipball/…" file could not
+be downloaded (HTTP/2 504)` during `composer install` — a GitHub outage, not the
+diff. Read the job log before touching the branch; `POST /projects/:id/jobs/:job_id/retry`
+re-runs a single job.
 
 The shared template `services/t3o-sites/common/t3o-basic-pipeline-jobs@v13`
 defines `test:typoscript` and `test:php`; the site repo adds its own jobs.
@@ -156,6 +167,39 @@ PHP_CS_FIXER_IGNORE_ENV=1 vendor/bin/php-cs-fixer fix --dry-run -n \
 
 `test:unit` needs `TYPO3_PATH_WEB="$PWD/public"` and an existing
 `public/fileadmin/currentcoredata.json`.
+
+**The checkout's `vendor/` is not what `composer.lock` says.** A clone that has
+not been reinstalled for a while can sit whole majors behind the lock file, and
+nothing warns you. Before naming the version something ran on — in a merge
+request, an issue, or a screenshot caption — read the *installed* version, never
+the lock:
+
+```bash
+jq -r '.packages[] | select(.name=="typo3fluid/fluid") | .version' vendor/composer/installed.json
+jq -r '.packages[] | select(.name=="typo3fluid/fluid") | .version' composer.lock
+```
+
+(Burned 2026-08: renders published as "typo3fluid/fluid 4.6.1" had actually run
+on 2.15.0 — the lock said 4.6.1, the tree held Fluid 2 from a months-old
+install, and the wrong version was baked into a screenshot in a merge request.)
+
+To render or test on the *locked* stack without reinstalling the site, build a
+scratch project beside it — for Fluid work that is enough, and it takes a
+minute:
+
+```bash
+# --no-plugins is required: typo3/cms-fluid pulls typo3/cms-composer-installers,
+# and composer refuses to run an unlisted plugin in a fresh project
+composer require typo3fluid/fluid:4.6.1 typo3/cms-fluid:v13.4.34 \
+  --no-interaction --ignore-platform-reqs --no-plugins
+```
+
+Standalone Fluid resolves neither `f:format.date` (it lives in `typo3/cms-fluid`)
+nor Extbase-only helpers such as `f:link.action`; stub the latter identically on
+both sides of a comparison, and set `$GLOBALS['EXEC_TIME']` to a fixed timestamp
+so `f:format.date(date: 'now')` is reproducible. In Fluid 4 `$view->render($name)`
+resolves `$name` as a controller action — use
+`getTemplatePaths()->setTemplatePathAndFilename()` to render one file.
 
 TypoScript lint is **not** in `require-dev`; the CI job installs it globally:
 
@@ -210,6 +254,53 @@ python3 "${CLAUDE_SKILL_DIR}/scripts/t3o-gitlab.py" probe https://extensions.typ
 Do not conclude that a crawler is blocked because a `Googlebot` user agent gets
 challenged from your machine: `(data)/crawlers/_allow-good.yaml` verifies
 crawlers by address, not by user agent string.
+
+### Driving a real browser against the site
+
+A headless browser sends a `Mozilla/…` user agent and therefore meets the wall,
+which in Chromium renders as a 2.2 KB page titled **"Oh noes!"** rather than the
+challenge page `curl` sees. Override the user agent at context level — the page
+and every asset it pulls then go straight to the origin:
+
+```python
+ctx = browser.new_context(user_agent="curl/8.5.0")  # default Chrome UA hits the wall
+page = ctx.new_page()
+r = page.goto("https://extensions.typo3.org/extension/news", wait_until="networkidle")
+print(r.status, page.title(), len(page.content()))  # 200, "TYPO3 Extension …", ~269 KB
+```
+
+Fingerprint the same way as with `curl` — status, `<title>`, byte size — before
+reasoning about anything you measured in the page. Two runs answering with the
+identical byte size mean you photographed the same thing twice, usually because
+a selector matched the wrong element.
+
+## Screenshots and attachments
+
+Evidence belongs in the ticket, not in a sentence claiming the evidence exists.
+Upload first, then embed the returned markdown:
+
+```bash
+curl -sS -H "PRIVATE-TOKEN: $(cat ~/.secrets/git.typo3.org)" \
+  --form "file=@shot.png" \
+  "https://git.typo3.org/api/v4/projects/<id>/uploads" | jq -r '.markdown'
+# ![shot](/uploads/<hash>/shot.png)
+```
+
+The relative `/uploads/<hash>/<file>` is what belongs in the description; GitLab
+rewrites it on render. The **public** URL is `/-/project/<id>/uploads/<hash>/<file>`
+(anonymous, `200 image/png`); the namespace form
+`/<group>/<project>/uploads/<hash>/<file>` answers 404, so testing that one
+proves nothing. To confirm an embedded image really renders, push the
+description through the markdown API and read `data-src` — `src` is a lazy
+placeholder holding a base64 GIF:
+
+```bash
+curl -sS -X POST -H "PRIVATE-TOKEN: $T" -H "Content-Type: application/json" \
+  --data @body.json "https://git.typo3.org/api/v4/markdown"   # {"text": …, "gfm": true, "project": "<full/path>"}
+```
+
+Uploads are project-scoped, so the same hash can be embedded in an issue and in
+a merge request of that project.
 
 ## Reporting findings
 
