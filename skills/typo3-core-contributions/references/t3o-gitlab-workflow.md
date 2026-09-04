@@ -85,6 +85,30 @@ The binding rules:
 - **The MR description must state the changes *and the testing done*.** An MR without a testing section is incomplete by their rules.
 - **Commit subjects use the Core prefixes** — `[BUGFIX]`, `[TASK]`, `[FEATURE]` — so `validate-commit-message.py` still applies, minus the Gerrit-only `Change-Id`. Use `Relates: #<iid>` for the site issue.
 
+### Stacking a merge request on another one
+
+When a change depends on one still in review, branch off that branch and target
+it rather than `develop`, so the diff shows only your own work:
+
+```bash
+git -C .bare worktree add ../bugfix-second -b bugfix/second bugfix/first
+# then create the MR with target_branch = bugfix/first
+```
+
+Two things follow, both observed on `ter` in one session:
+
+- **GitLab retargets the stacked MR automatically** when the base MR is merged.
+  `!900` moved from `bugfix/emconf-extraction` to `develop` by itself, and the
+  branch was rebased onto the new base — no action needed, and the dependency
+  note in the description becomes stale rather than wrong.
+- **Amending the base means rebasing the stack yourself.** A plain
+  `git rebase <base-branch>` replays the *old* base commit too and conflicts with
+  itself. Use `git rebase --onto <base-branch> <old-base-sha> <your-branch>` so
+  only your own commits are replayed.
+
+Say in the stacked MR's description which one has to land first; a reviewer
+otherwise reads a diff that assumes code they cannot see.
+
 ### Issue templates are not optional furniture
 
 `.gitlab/issue_templates/{Bugreport,Feature,Task}.md` exist in `ter` and
@@ -302,6 +326,28 @@ python3 "${CLAUDE_SKILL_DIR}/scripts/t3o-gitlab.py" probe https://extensions.typ
 Do not conclude that a crawler is blocked because a `Googlebot` user agent gets
 challenged from your machine: `(data)/crawlers/_allow-good.yaml` verifies
 crawlers by address, not by user agent string.
+
+### The extension download endpoint is challenged too, and it lies quietly
+
+`/extension/download/<key>/<version>/zip` behaves the same way, which matters more
+than on an HTML page because the caller expects a file:
+
+```
+Chrome UA    200   7490 bytes   text/html          <- the wall
+Firefox UA   200   7489 bytes   text/html          <- the wall
+curl/8.5.0   200   3482990      x-application/octet-stream   <- the archive
+```
+
+Two details make it hard to notice. The challenge response carries **no
+`Content-Disposition`**, while the real one sends
+`attachment; filename=powermail_10.9.3.zip` — so a client that saves by URL path
+writes a 7.5 KB HTML file named `zip`. And the status is 200 either way, so
+`curl -f` does not trip.
+
+An interactive browser solves the challenge and gets the archive, so this bites
+scripts, `wget`, download managers and CI, not people. If a downloaded extension
+archive will not open, check its size and first bytes before suspecting the
+archive.
 
 ### Driving a real browser against the site
 
