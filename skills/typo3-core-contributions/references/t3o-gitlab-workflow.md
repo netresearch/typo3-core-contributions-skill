@@ -246,20 +246,28 @@ curl -s "https://extensions.typo3.org/api/v1/extension/<key>" | jq '.[0].current
 
 - the **version** endpoint answering with a full record while `current_version`
   still names the older version is the signature of the partial write
-- `upload_date` is a Unix timestamp; matching it against the CI job's own window
-  proves the record was created by the request that reported the failure
-- `review_state: -1` marks a version the Security Team flagged as insecure, so a
-  stuck pointer can leave exactly that version advertised as the current one
-- an empty `download.zip` follows from the same flag, not from a broken upload
+- `upload_date` is a Unix timestamp; falling inside the failing job's own window
+  places the write in that window — correlation, not identity. Confirm it with
+  the version number and, where you can get one, the server-side log entry
+- `review_state: -1` marks a version the Security Team flagged as insecure. The
+  pointer does not move to such a version — it simply never moved, and the
+  version it still names was flagged afterwards, which is what makes a failed
+  security release the damaging case: the fix is stored and invisible while the
+  vulnerable predecessor stays on display
+- an empty `download.zip` follows from that flag, not from a broken upload
 
-What the error text tells you about where it failed: TER wraps every handled
-exception into `{"status", "code", "message"}`, and `tailor` prints the message
-and the code when they are there. A reason of `Unknown` with no code therefore
-says the response never came from `ResponseFactory`. `RouteHandler` caught
+What the error text hints at: TER wraps every handled exception into
+`{"status", "code", "message"}`, and `tailor` prints the message and the code
+when they are there. A reason of `Unknown` with no code is therefore consistent
+with a response that never came from `ResponseFactory` — but it is only a hint,
+because `tailor` also falls back to `Unknown` for any body it cannot decode.
+Read the body itself before concluding: every command takes `-r, --raw` and then
+prints the response verbatim, failures included. `RouteHandler` caught
 `\Exception` rather than `\Throwable` until 2026-08-31, so a PHP `\Error` passed
 the handler by, reached the client as a bare 500 **and** left the
-`TER.API.REST` log empty. The fix is on `develop`; on a deployment that predates
-it, an `Unknown` reason still means "no server-side trace exists".
+`TER.API.REST` log empty. The fix is on `develop`; on a deployment that
+predates it, an `Unknown` reason may well mean that no server-side trace exists
+at all.
 
 Before reporting such a failure as a `tailor` bug, check that it is not one:
 compare against another extension published in the same window
