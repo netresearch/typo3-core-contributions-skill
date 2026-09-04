@@ -226,6 +226,46 @@ Check both before accepting the rewrite — without the container registration,
 argument is a fatal error. Rector's output is also mechanical: it leaves
 `$x = $this->x;` aliases and misplaced blank lines worth cleaning up by hand.
 
+## A failed `ter:publish` usually left half of itself behind
+
+TER answers a failing publish with `HTTP 500`, and `tailor` reports it as
+`Could not publish version … Reason: …`. That does not mean nothing happened:
+`VersionService::upload()` writes the author record, the version record, its
+relations and finally the extension row through separate repositories, so an
+abort in between stores the version while the extension still advertises the
+previous one. The author then cannot retry either — the version number counts as
+taken and both the API and the upload form answer that it already exists.
+
+Read the two endpoints against each other before believing the error. They are
+public and need no token:
+
+```bash
+curl -s "https://extensions.typo3.org/api/v1/extension/<key>/<version>" | jq '.[0]'
+curl -s "https://extensions.typo3.org/api/v1/extension/<key>" | jq '.[0].current_version.number'
+```
+
+- the **version** endpoint answering with a full record while `current_version`
+  still names the older version is the signature of the partial write
+- `upload_date` is a Unix timestamp; matching it against the CI job's own window
+  proves the record was created by the request that reported the failure
+- `review_state: -1` marks a version the Security Team flagged as insecure, so a
+  stuck pointer can leave exactly that version advertised as the current one
+- an empty `download.zip` follows from the same flag, not from a broken upload
+
+What the error text tells you about where it failed: TER wraps every handled
+exception into `{"status", "code", "message"}`, and `tailor` prints the message
+and the code when they are there. A reason of `Unknown` with no code therefore
+says the response never came from `ResponseFactory`. `RouteHandler` caught
+`\Exception` rather than `\Throwable` until 2026-08-31, so a PHP `\Error` passed
+the handler by, reached the client as a bare 500 **and** left the
+`TER.API.REST` log empty. The fix is on `develop`; on a deployment that predates
+it, an `Unknown` reason still means "no server-side trace exists".
+
+Before reporting such a failure as a `tailor` bug, check that it is not one:
+compare against another extension published in the same window
+(`current_version.upload_date` on any actively released key), and remember that
+a fix merged into `develop` is not yet running — `main` is what serves the site.
+
 ## extensions.typo3.org sits behind Anubis — every live probe is suspect
 
 Anubis is a bot wall in front of `extensions.typo3.org`. Its `policy.yaml`

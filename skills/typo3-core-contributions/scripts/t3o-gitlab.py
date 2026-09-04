@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import urllib.error
 import urllib.parse
@@ -23,6 +24,7 @@ from pathlib import Path
 HOST = "https://git.typo3.org"
 API = f"{HOST}/api/v4"
 TOKEN_FILE = "~/.secrets/git.typo3.org"
+TOKEN_ENV = "GIT_TYPO3_ORG_TOKEN"
 
 # A browser-shaped agent is what trips the bot wall; the plain one reaches the
 # origin. Keeping both here is the whole point of the `probe` subcommand.
@@ -47,9 +49,21 @@ ACCESS_LEVELS = {
 
 
 def token() -> str:
+    """The PAT, from the environment first, then the token file.
+
+    Not everyone keeps the token on disk: where it lives in a secret store it is
+    exported for the call instead, and requiring the file turns a working setup
+    into "No token at ~/.secrets/git.typo3.org".
+    """
+    value = os.environ.get(TOKEN_ENV, "").strip()
+    if value:
+        return value
     path = Path(TOKEN_FILE).expanduser()
     if not path.is_file():
-        sys.exit(f"No token at {TOKEN_FILE}. Create it with a git.typo3.org PAT.")
+        sys.exit(
+            f"No token: set ${TOKEN_ENV} or create {TOKEN_FILE} "
+            "with a git.typo3.org PAT."
+        )
     value = path.read_text(encoding="utf-8").strip()
     if not value:
         sys.exit(f"{TOKEN_FILE} is empty.")
