@@ -660,5 +660,47 @@
         "description": "Names generated output that grep -r counts as source"
       }
     ]
+  },
+  {
+    "name": "stack-a-merge-request-on-another",
+    "prompt": "On the t3o ter project I have a change that depends on another merge request still in review. How do I open the second one so the reviewer only sees my own diff, and what happens to it when the first one is merged?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "target",
+        "description": "Targets the base branch instead of develop"
+      },
+      {
+        "type": "content_contains",
+        "value": "default branch",
+        "description": "States the precondition for GitLab's automatic retarget rather than promising it unconditionally"
+      },
+      {
+        "type": "content_contains",
+        "value": "--onto",
+        "description": "Uses git rebase --onto when the base itself is amended"
+      }
+    ]
+  },
+  {
+    "name": "downloaded-ter-archive-will-not-open",
+    "prompt": "My script downloads an extension from https://extensions.typo3.org/extension/download/powermail/10.9.3/zip and the file will not open as a ZIP, but curl reports HTTP 200. What is wrong?",
+    "assertions": [
+      {
+        "type": "content_contains",
+        "value": "Anubis",
+        "description": "Identifies the bot wall rather than blaming the archive"
+      },
+      {
+        "type": "content_contains",
+        "value": "user agent",
+        "description": "Explains that a browser-like user agent gets the challenge while a plain curl one gets the file"
+      },
+      {
+        "type": "content_contains",
+        "value": "unzip -t",
+        "description": "Gives a deterministic check to run before extraction, since the status is 200 either way"
+      }
+    ]
   }
 ]
