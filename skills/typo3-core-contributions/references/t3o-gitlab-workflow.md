@@ -97,10 +97,15 @@ git -C .bare worktree add ../bugfix-second -b bugfix/second bugfix/first
 
 Two things follow, both observed on `ter` in one session:
 
-- **GitLab retargets the stacked MR automatically** when the base MR is merged.
-  `!900` moved from `bugfix/emconf-extraction` to `develop` by itself, and the
-  branch was rebased onto the new base — no action needed, and the dependency
-  note in the description becomes stale rather than wrong.
+- **GitLab retargets the stacked MR when the base MR merges — under conditions.**
+  Observed on `ter`: `!900` moved from `bugfix/emconf-extraction` to `develop` by
+  itself and was rebased onto the new base. This is GitLab's stacked-MR handling,
+  not a general rule for dependent MRs: it applies when the base MR targets the
+  project's **default branch**, which for these repos is `develop` — confirm it
+  rather than assume (`t3o-gitlab.py access <project>` prints it). Deleting a
+  source branch by hand does not trigger it. So check the stacked MR's target and
+  diff once the base lands instead of taking the retarget for granted, and expect
+  the dependency note in its description to be stale afterwards.
 - **Amending the base means rebasing the stack yourself.** A plain
   `git rebase <base-branch>` replays the *old* base commit too and conflicts with
   itself. Use `git rebase --onto <base-branch> <old-base-sha> <your-branch>` so
@@ -345,9 +350,20 @@ writes a 7.5 KB HTML file named `zip`. And the status is 200 either way, so
 `curl -f` does not trip.
 
 An interactive browser solves the challenge and gets the archive, so this bites
-scripts, `wget`, download managers and CI, not people. If a downloaded extension
-archive will not open, check its size and first bytes before suspecting the
-archive.
+scripts, `wget`, download managers and CI, not people.
+
+Because the status is 200 either way, a script has to reject the challenge
+**before** it hands the bytes to an archive tool, not after extraction fails:
+
+```bash
+curl -sSL -o ext.zip -D headers.txt "$URL"
+grep -qi '^content-type: *application/\|^content-type: *x-application/' headers.txt \
+  || { echo "not an archive - bot wall or error page"; exit 1; }
+unzip -t ext.zip >/dev/null || { echo "archive did not verify"; exit 1; }
+```
+
+`unzip -t` is the deterministic check; content type, byte size and the first
+bytes are diagnostics that tell you *which* failure it was.
 
 ### Driving a real browser against the site
 
