@@ -91,15 +91,16 @@ When a change depends on one still in review, branch off that branch and target
 it rather than `develop`, so the diff shows only your own work:
 
 ```bash
-git -C .bare worktree add ../bugfix-second -b bugfix/second bugfix/first
+git -C .bare fetch origin bugfix/first:refs/remotes/origin/bugfix/first
+git -C .bare worktree add ../bugfix-second -b bugfix/second origin/bugfix/first
 # then create the MR with target_branch = bugfix/first
 ```
 
 Two things follow, both observed on `ter` in one session:
 
 - **GitLab retargets the stacked MR when the base MR merges — under conditions.**
-  Observed on `ter`: `!900` moved from `bugfix/emconf-extraction` to `develop` by
-  itself and was rebased onto the new base. This is GitLab's stacked-MR handling,
+  `!900` moved from `bugfix/emconf-extraction` to `develop` by itself and was
+  rebased onto the new base. This is GitLab's stacked-MR handling,
   not a general rule for dependent MRs: it applies when the base MR targets the
   project's **default branch**, which for these repos is `develop` — confirm it
   rather than assume (`t3o-gitlab.py access <project>` prints it). Deleting a
@@ -350,10 +351,9 @@ writes a 7.5 KB HTML file named `zip`. And the status is 200 either way, so
 `curl -f` does not trip.
 
 An interactive browser solves the challenge and gets the archive, so this bites
-scripts, `wget`, download managers and CI, not people.
-
-Because the status is 200 either way, a script has to reject the challenge
-**before** it hands the bytes to an archive tool, not after extraction fails:
+scripts, `wget`, download managers and CI, not people. Such a script has to
+reject the challenge **before** it hands the bytes to an archive tool, not after
+extraction fails:
 
 ```bash
 curl -sSL -o ext.zip -D headers.txt "$URL"
