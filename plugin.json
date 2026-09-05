@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "typo3-core-contributions",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "description": "TYPO3 Core contribution workflow (Forge, Gerrit, docs)",
   "author": {
     "name": "Netresearch DTT GmbH",
