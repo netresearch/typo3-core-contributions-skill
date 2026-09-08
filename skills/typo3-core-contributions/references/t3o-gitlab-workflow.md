@@ -43,6 +43,27 @@ explicit header is unambiguous.
 `${CLAUDE_SKILL_DIR}/scripts/t3o-gitlab.py` wraps the calls below — start there
 rather than hand-rolling curl.
 
+### Which transport answers what
+
+Three access paths, and they fail in different directions:
+
+- **Anonymous HTTPS REST** carries further than expected on these public
+  projects: the merge-request list, a single merge request with its SHA,
+  description, diff and `detailed_merge_status`, the label list, pipelines.
+  `notes` and `discussions` are the exception and answer `401` — review
+  comments always need a token.
+- **Git over HTTPS** clones and fetches anonymously, which is enough to
+  inspect and rebase a branch locally.
+- **Git over SSH** (`ssh://git@git.typo3.org:2222/…`) is what you push with,
+  and in an agent shell it is commonly blocked by the sandbox: `git
+  fetch`/`push` and a bare `ssh` both hang until the timeout with no error.
+  Re-issue the call with the sandbox disabled rather than concluding the host
+  is unreachable.
+
+Do not use a `/dev/tcp` probe to decide any of this. It is blocked by the same
+sandbox and reports port 443 as closed on a host that `curl` reaches in the same
+second, so it produces a confident wrong answer about the network.
+
 ## Check your access level before planning anything
 
 ```bash
@@ -132,6 +153,17 @@ House label taxonomy: `Type::Bug` / `Type::Feature` / `Type::Task`,
 `Skill:: Backend|Frontend|Ops|Design|Solr|Content`, `Process: To discuss`,
 `Process:: Review`, plus area labels. When the cause of a finding is not
 established, `Process: To discuss` is more honest than `Type::Bug`.
+
+**`Type::`, `Skill::` and `Process::` are scoped labels — one value each.**
+GitLab treats a `key::value` label as exclusive within its key, so a second
+value of the same scope silently replaces the first. Setting `Type::Task`,
+`Skill:: Backend` and `Skill:: Ops` in one call returns HTTP 200 and leaves
+two labels on the merge request; the one you meant is not necessarily the one
+that survives. Pick the scope value that matches the bulk of the change and say
+so, rather than trying to express two skills. `Process: To discuss` has a
+single colon and is therefore *not* scoped — it can sit beside `Process:: Review`
+without either being dropped. This compounds the silent-failure warning above:
+read the returned `labels` array back in both cases, for rights and for scope.
 
 ## Issue and work item mechanics
 
