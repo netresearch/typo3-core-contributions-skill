@@ -666,19 +666,19 @@
     "prompt": "On the t3o ter project I have a change that depends on another merge request still in review. How do I open the second one so the reviewer only sees my own diff, and what happens to it when the first one is merged?",
     "assertions": [
       {
-        "type": "content_contains",
-        "value": "target",
-        "description": "Targets the base branch instead of develop"
+        "type": "content_regex",
+        "value": "(?is)target.{0,80}(base branch|first merge request|other merge request|parent branch)",
+        "description": "Targets the branch of the merge request it depends on, not develop — the bare word \"target\" also matched an answer recommending develop"
       },
       {
-        "type": "content_contains",
-        "value": "default branch",
-        "description": "States the precondition for GitLab's automatic retarget rather than promising it unconditionally"
+        "type": "content_regex",
+        "value": "(?is)(retarget|re-target|default branch).{0,140}(only|when|if|provided|precondition)",
+        "description": "States the precondition for GitLab's automatic retarget — the bare phrase also matched an answer promising it unconditionally"
       },
       {
-        "type": "content_contains",
-        "value": "--onto",
-        "description": "Uses git rebase --onto when the base itself is amended"
+        "type": "content_regex",
+        "value": "(?is)rebase\\s+--onto",
+        "description": "Uses the actual git rebase --onto command when the base itself is amended, not a passing mention of the flag"
       }
     ]
   },
@@ -692,9 +692,9 @@
         "description": "Identifies the bot wall rather than blaming the archive"
       },
       {
-        "type": "content_contains",
-        "value": "user agent",
-        "description": "Explains that a browser-like user agent gets the challenge while a plain curl one gets the file"
+        "type": "content_regex",
+        "value": "(?is)user[- ]agent.{0,120}(gets|get|receives|receive|triggers|trigger|returns|return|is served|serves|causes|cause|leads to).{0,80}(challenge|Anubis|HTML|interstitial)",
+        "description": "Connects the user agent to the challenge it triggers — naming both separately did not require the explanation"
       },
       {
         "type": "content_contains",
