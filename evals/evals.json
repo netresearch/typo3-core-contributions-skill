@@ -702,5 +702,47 @@
         "description": "Gives a deterministic check to run before extraction, since the status is 200 either way"
       }
     ]
+  },
+  {
+    "name": "t3o-token-expired-glab-keeps-asking",
+    "prompt": "Every call to git.typo3.org now answers 401 'Token is expired', and when I run glab auth login --hostname git.typo3.org it asks me for the API host and protocols again, every single time. How do I get access that works and stays?",
+    "assertions": [
+      {
+        "type": "content_regex",
+        "value": "(?is)(personal access token|\\bPAT\\b).{0,160}expir|expir.{0,160}(personal access token|\\bPAT\\b)",
+        "description": "Reads the 401 as an expired personal access token, not a refreshable OAuth token"
+      },
+      {
+        "type": "content_contains",
+        "value": "--stdin",
+        "description": "Uses the non-interactive glab login"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?is)--api-protocol.{0,200}--git-protocol|--git-protocol.{0,200}--api-protocol",
+        "description": "Passes the host flags so glab stores them and stops prompting"
+      }
+    ]
+  },
+  {
+    "name": "t3o-pipeline-stuck-preparing-executor",
+    "prompt": "The pipeline of my merge request on git.typo3.org has been 'running' for half an hour. Every job is green except Create Badge, whose log ends at 'Preparing the \"docker-autoscaler\" executor'. What do I do?",
+    "assertions": [
+      {
+        "type": "content_regex",
+        "value": "(?i)cancel",
+        "description": "Cancels the stuck job"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)retry",
+        "description": "Retries the single job instead of pushing again"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?is)(runner|executor).{0,160}(not|n't).{0,80}(change|diff|code|branch)",
+        "description": "Says the hang is the runner, not the change"
+      }
+    ]
   }
 ]

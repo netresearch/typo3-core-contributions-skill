@@ -40,6 +40,24 @@ Do not reach for `glab`: `GITLAB_HOST` is commonly exported for a different
 instance, and `--hostname` only works on `glab api`. The REST API with an
 explicit header is unambiguous.
 
+A `401` with `Token is expired` means the personal access token has passed
+its expiry date — it is not an OAuth token that a refresh could revive.
+Before asking anyone to log in again, look in the secret store the team
+keeps credentials in; a replacement is often already there. Install it in
+both places at once:
+
+```bash
+install -m600 /dev/null ~/.secrets/git.typo3.org   # then write the token into it
+glab auth login --hostname git.typo3.org --api-host git.typo3.org \
+  --api-protocol https --git-protocol ssh --stdin < ~/.secrets/git.typo3.org
+```
+
+The flags matter when someone does use `glab`: a host entry in
+`~/.config/glab-cli/config.yml` that holds nothing but `token` is why the
+interactive login asks for the API host and protocols again every time.
+`--stdin` writes every field it is given and does not validate the token,
+so prove it afterwards with the `curl` above.
+
 `${CLAUDE_SKILL_DIR}/scripts/t3o-gitlab.py` wraps the calls below — start there
 rather than hand-rolling curl.
 
@@ -212,6 +230,14 @@ be downloaded (HTTP/2 504)` during `composer install` — a GitHub outage, not t
 diff. Read the job log before touching the branch; `POST /projects/:id/jobs/:job_id/retry`
 re-runs a single job.
 
+A job can also hang before it starts. `Create Badge` once sat for 25
+minutes in `Preparing the "docker-autoscaler" executor`, where it normally
+finishes in about 80 seconds, and held the whole pipeline — and with it the
+merge request's mergeability — on `running`. Cancel it and retry the single
+job (`POST /projects/:id/jobs/:job_id/cancel`, then `…/retry`); the retry
+ran normally. The cancelled job may stay `canceling` for a while; the retry
+does not have to wait for it.
+
 The shared template `services/t3o-sites/common/t3o-basic-pipeline-jobs@v13`
 defines `test:typoscript` and `test:php`; the site repo adds its own jobs.
 
@@ -229,6 +255,27 @@ PHP_CS_FIXER_IGNORE_ENV=1 vendor/bin/php-cs-fixer fix --dry-run -n \
 
 `test:unit` needs `TYPO3_PATH_WEB="$PWD/public"` and an existing
 `public/fileadmin/currentcoredata.json`.
+
+Infection (`composer test:mutation`) validates the PHPUnit configuration it
+generates against `https://schema.phpunit.de/<version>/phpunit.xsd`, and
+`Typo3VersionServiceTest` fetches `https://get.typo3.org`. Where PHP cannot
+reach those hosts — a broken IPv6 route is enough, because PHP tries the
+AAAA record first and hangs — map the schema to the vendor copy and leave
+the live-API test out, and say so next to any score you report:
+
+```bash
+cat > catalog.xml <<'EOF'
+<catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
+  <uri name="https://schema.phpunit.de/10.5/phpunit.xsd"
+       uri="file:///<repo>/vendor/phpunit/phpunit/phpunit.xsd"/>
+</catalog>
+EOF
+XML_CATALOG_FILES=$PWD/catalog.xml COMPOSER_PROCESS_TIMEOUT=0 \
+  composer test:mutation -- --test-framework-options="--exclude-filter=Typo3VersionServiceTest"
+```
+
+A full run takes longer than Composer's 300-second default for scripts,
+hence `COMPOSER_PROCESS_TIMEOUT=0`.
 
 **The checkout's `vendor/` is not what `composer.lock` says.** A clone that has
 not been reinstalled for a while can sit whole majors behind the lock file, and
