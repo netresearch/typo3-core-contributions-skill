@@ -721,6 +721,11 @@
         "type": "content_regex",
         "value": "(?is)--api-protocol.{0,200}--git-protocol|--git-protocol.{0,200}--api-protocol",
         "description": "Passes the host flags so glab stores them and stops prompting"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)--hostname[ =]git\\.typo3\\.org",
+        "description": "Names git.typo3.org explicitly, so an exported GITLAB_HOST cannot route the login to another instance"
       }
     ]
   },

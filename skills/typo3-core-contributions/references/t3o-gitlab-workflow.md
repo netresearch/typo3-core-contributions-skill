@@ -47,6 +47,7 @@ keeps credentials in; a replacement is often already there. Install it in
 both places at once:
 
 ```bash
+install -d -m700 ~/.secrets
 install -m600 /dev/null ~/.secrets/git.typo3.org   # then write the token into it
 glab auth login --hostname git.typo3.org --api-host git.typo3.org \
   --api-protocol https --git-protocol ssh --stdin < ~/.secrets/git.typo3.org
@@ -264,10 +265,10 @@ AAAA record first and hangs — map the schema to the vendor copy and leave
 the live-API test out, and say so next to any score you report:
 
 ```bash
-cat > catalog.xml <<'EOF'
+cat > catalog.xml <<EOF
 <catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
   <uri name="https://schema.phpunit.de/10.5/phpunit.xsd"
-       uri="file:///<repo>/vendor/phpunit/phpunit/phpunit.xsd"/>
+       uri="file://$PWD/vendor/phpunit/phpunit/phpunit.xsd"/>
 </catalog>
 EOF
 XML_CATALOG_FILES=$PWD/catalog.xml COMPOSER_PROCESS_TIMEOUT=0 \
