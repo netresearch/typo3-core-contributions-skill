@@ -29,10 +29,23 @@ not as the site you happen to be looking at.
 
 ## Authentication
 
-A personal access token belongs in `~/.secrets/git.typo3.org` (`glpat-…`).
+The personal access token (`glpat-…`) reaches `t3o-gitlab.py` through
+`GIT_TYPO3_ORG_TOKEN`. The script reads that variable **first** and falls back
+to `~/.secrets/git.typo3.org` only when it is unset, so the file is a
+convenience, never a requirement.
+
+Prefer the variable wherever the token already lives in a secret store: export
+it for the call instead of copying it to disk. A copy is a second place to
+leak from, and it goes stale silently — the store gets the rotated token, the
+file keeps the old one, and the script reads the file.
 
 ```bash
-curl -sS -H "PRIVATE-TOKEN: $(cat ~/.secrets/git.typo3.org)" \
+# pass through from wherever you keep it; nothing is written to disk
+export GIT_TYPO3_ORG_TOKEN="$(your-secret-store read .../git.typo3.org)"
+uv run scripts/t3o-gitlab.py access services/t3o-sites/common/t3olayout
+
+# the same token against the raw API
+curl -sS -H "PRIVATE-TOKEN: $GIT_TYPO3_ORG_TOKEN" \
   "https://git.typo3.org/api/v4/user"
 ```
 
@@ -47,11 +60,14 @@ keeps credentials in; a replacement is often already there. Install it in
 both places at once:
 
 ```bash
-install -d -m700 ~/.secrets
-install -m600 /dev/null ~/.secrets/git.typo3.org   # then write the token into it
-glab auth login --hostname git.typo3.org --api-host git.typo3.org \
-  --api-protocol https --git-protocol ssh --stdin < ~/.secrets/git.typo3.org
+export GIT_TYPO3_ORG_TOKEN="$(your-secret-store read .../git.typo3.org)"
+# only if you also use glab, which has no environment path of its own:
+printf '%s' "$GIT_TYPO3_ORG_TOKEN" | glab auth login --hostname git.typo3.org \
+  --api-host git.typo3.org --api-protocol https --git-protocol ssh --stdin
 ```
+
+Write the token to `~/.secrets/git.typo3.org` only if you have no store to
+read it from; if you do, refresh the store and leave the disk alone.
 
 The flags matter when someone does use `glab`: a host entry in
 `~/.config/glab-cli/config.yml` that holds nothing but `token` is why the
@@ -467,10 +483,13 @@ a selector matched the wrong element.
 ## Screenshots and attachments
 
 Evidence belongs in the ticket, not in a sentence claiming the evidence exists.
+Both commands below read `$GIT_TYPO3_ORG_TOKEN`, exported as in *Authentication*
+above — they are not self-contained.
+
 Upload first, then embed the returned markdown:
 
 ```bash
-curl -sS -H "PRIVATE-TOKEN: $(cat ~/.secrets/git.typo3.org)" \
+curl -sS -H "PRIVATE-TOKEN: $GIT_TYPO3_ORG_TOKEN" \
   --form "file=@shot.png" \
   "https://git.typo3.org/api/v4/projects/<id>/uploads" | jq -r '.markdown'
 # ![shot](/uploads/<hash>/shot.png)
@@ -485,7 +504,7 @@ description through the markdown API and read `data-src` — `src` is a lazy
 placeholder holding a base64 GIF:
 
 ```bash
-curl -sS -X POST -H "PRIVATE-TOKEN: $T" -H "Content-Type: application/json" \
+curl -sS -X POST -H "PRIVATE-TOKEN: $GIT_TYPO3_ORG_TOKEN" -H "Content-Type: application/json" \
   --data @body.json "https://git.typo3.org/api/v4/markdown"   # {"text": …, "gfm": true, "project": "<full/path>"}
 ```
 
