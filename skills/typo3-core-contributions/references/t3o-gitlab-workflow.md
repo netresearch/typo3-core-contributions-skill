@@ -483,6 +483,9 @@ a selector matched the wrong element.
 ## Screenshots and attachments
 
 Evidence belongs in the ticket, not in a sentence claiming the evidence exists.
+Both commands below read `$GIT_TYPO3_ORG_TOKEN`, exported as in *Authentication*
+above — they are not self-contained.
+
 Upload first, then embed the returned markdown:
 
 ```bash
@@ -501,7 +504,7 @@ description through the markdown API and read `data-src` — `src` is a lazy
 placeholder holding a base64 GIF:
 
 ```bash
-curl -sS -X POST -H "PRIVATE-TOKEN: $T" -H "Content-Type: application/json" \
+curl -sS -X POST -H "PRIVATE-TOKEN: $GIT_TYPO3_ORG_TOKEN" -H "Content-Type: application/json" \
   --data @body.json "https://git.typo3.org/api/v4/markdown"   # {"text": …, "gfm": true, "project": "<full/path>"}
 ```
 
