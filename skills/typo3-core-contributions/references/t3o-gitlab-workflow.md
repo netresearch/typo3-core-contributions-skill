@@ -78,15 +78,40 @@ so prove it afterwards with the `curl` above.
 `${CLAUDE_SKILL_DIR}/scripts/t3o-gitlab.py` wraps the calls below — start there
 rather than hand-rolling curl.
 
+Mind what it does **not** wrap, so you do not go looking for a subcommand that
+is not there: `mr` can only `create`. Updating a merge request's description or
+title, closing or reopening it (`state_event`), and reading pipeline status all
+go through the REST API directly. `update` exists only under `issue`. Whenever
+you do fall back to curl, read the field back afterwards — the PUT answers
+`200` either way.
+
 ### Which transport answers what
 
 Three access paths, and they fail in different directions:
 
 - **Anonymous HTTPS REST** carries further than expected on these public
   projects: the merge-request list, a single merge request with its SHA,
-  description, diff and `detailed_merge_status`, the label list, pipelines.
-  `notes` and `discussions` are the exception and answer `401` — review
-  comments always need a token.
+  description, diff and `detailed_merge_status`, and the label list.
+  `notes` and `discussions` answer `401` — review comments always need a token.
+  **Pipeline status does not come out anonymously**, in three different
+  disguises across the four calls below — `null`, `403`, and an empty `200`
+  (measured on `ter`, 2026-09-13):
+
+  | call | anonymous | with token |
+  |---|---|---|
+  | merge request object, `.head_pipeline` | `null` | populated |
+  | `/projects/:id/pipelines` | `403` | `200` |
+  | `/projects/:id/pipelines/:pipeline_id` | `403` | `200` |
+  | `/merge_requests/:iid/pipelines` | `200`, **empty array** | `200`, populated |
+
+  The last row is the one that misleads silently: a `200` with an empty array
+  reads as "no pipeline ran", not as "you may not see it". A watcher built on
+  `head_pipeline` without a token therefore reports `none` forever and never
+  fires, which is indistinguishable from CI not having started. Poll
+  `detailed_merge_status` instead — it is the only CI signal anonymous access
+  gives you (`ci_still_running` → `mergeable` / `ci_must_pass`) — or send the
+  token. Sibling of the label-write trap below: do not read a status code as
+  an answer.
 - **Git over HTTPS** clones and fetches anonymously, which is enough to
   inspect and rebase a branch locally.
 - **Git over SSH** (`ssh://git@git.typo3.org:2222/…`) is what you push with,
@@ -219,6 +244,14 @@ the browser; `POST /api/v4/markdown` returns the pre-expansion HTML, so verify
 by checking that `data-original` kept the `+s` and that the reference resolved
 to an id — not by looking for the title in the rendered text.
 
+**A bare reference already renders its own state**, without `+s`: `!874` comes
+out as "!874 (merged)". So an index table listing sibling merge requests must
+**not** carry a hand-maintained "State" column — the column cannot be right for
+long, and it fails in the most visible way possible, printing `open` in the cell
+next to a link that says merged. Drop the column and let each reference speak
+for itself; the same goes for prose that pins a sibling's state ("!881 after
+!876") once that sibling has landed.
+
 **Sub-issues under an Issue are refused.** `workItemUpdate` with
 `hierarchyWidget.childrenIds` answers *"it's not allowed to add this type of
 parent item"* for Issue → Issue. Allowed is Epic → Issue and Issue → Task, and
@@ -254,6 +287,16 @@ merge request's mergeability — on `running`. Cancel it and retry the single
 job (`POST /projects/:id/jobs/:job_id/cancel`, then `…/retry`); the retry
 ran normally. The cancelled job may stay `canceling` for a while; the retry
 does not have to wait for it.
+
+**Do not copy `expire_in` from a junit job onto a report a person reads.** The
+neighbouring jobs in `ter` set `expire_in: 15 mins`, which is right for a junit
+or coverage artifact: GitLab ingests it on upload and never needs the file
+again. A mutation log, a profile or an analyser report is opened by a human, days
+later, from the merge request — and fifteen minutes means it is gone before the
+first reviewer arrives, leaving a job that says "success" and an artifact link
+that 404s. Give those a retention someone can actually reach (`1 week`), and
+when you quote numbers out of such a report, take them while the artifact still
+exists.
 
 The shared template `services/t3o-sites/common/t3o-basic-pipeline-jobs@v13`
 defines `test:typoscript` and `test:php`; the site repo adds its own jobs.
