@@ -198,6 +198,40 @@ Two things follow, both observed on `ter` in one session:
 Say in the stacked MR's description which one has to land first; a reviewer
 otherwise reads a diff that assumes code they cannot see.
 
+### Rebasing your own open merge requests onto `develop`
+
+`develop` moves under open merge requests, usually several at once. Rebasing
+three of them on `ter` in one pass (2026-09-14) turned up four things:
+
+- **Check that nobody else is on the branch.** A merge request pushed minutes
+  ago with its pipeline still running belongs to a session that is still
+  working; rebasing underneath it force-pushes over that session's next push.
+  Hold `updated_at` and `head_pipeline.status` of the merge request against the
+  clock, and look for a live watcher on its pipeline, before touching it.
+- **A branch checked out in another worktree cannot be checked out again.**
+  Rebase a detached copy and push by name, with the lease pinned to the SHA you
+  rebased from:
+
+  ```bash
+  git -C .bare worktree add --detach ../mr-x origin/task/x
+  old_sha=$(git -C ../mr-x rev-parse HEAD)
+  git -C ../mr-x rebase origin/develop
+  git -C ../mr-x push --force-with-lease=refs/heads/task/x:"$old_sha" \
+    origin HEAD:refs/heads/task/x
+  ```
+
+- **A conflict where `develop` rewrote the code leaves stale text behind.**
+  Resolving to `develop`'s side drops the hunk the commit carried, and with it
+  whatever the commit message and the merge request description say about that
+  hunk. Re-read both for the dropped change, the base SHA they name and the
+  test counts they quote. On `!880` a whole commit-message paragraph described
+  an `!is_array()` removal that no longer existed after the rebase.
+- **A description written back through the API reads back one newline short**
+  when the original was fetched with `jq -r`. Drop that one terminal newline
+  and compare the rest exactly before concluding that the `PUT` did not apply
+  — stripping all trailing whitespace would also swallow Markdown hard breaks
+  and make a changed description look unchanged.
+
 ### Issue templates are not optional furniture
 
 `.gitlab/issue_templates/{Bugreport,Feature,Task}.md` exist in `ter` and
