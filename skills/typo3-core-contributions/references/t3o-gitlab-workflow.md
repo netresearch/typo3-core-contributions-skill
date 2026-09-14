@@ -166,7 +166,7 @@ The binding rules:
 - **The MR description must state the changes *and the testing done*.** An MR without a testing section is incomplete by their rules.
 - **Commit subjects use the Core prefixes** — `[BUGFIX]`, `[TASK]`, `[FEATURE]` — so `validate-commit-message.py` still applies, minus the Gerrit-only `Change-Id`. Use `Relates: #<iid>` for the site issue.
 - **Maintainers merge with review threads still open.** Nothing in `ter` blocks a merge on unresolved discussions, and a merge can land while a review is being written. Read the merge request's `state` again immediately before posting review comments — a check of `sha` and `diff_refs` alone does not tell you. (`!911` was merged at 14:31 UTC; three review threads arrived at 14:52 and were never read.)
-- **Findings from a review go into the review, never into new issues.** When the merge request is already merged, the review has nowhere to land: turn the findings into a follow-up merge request that fixes them, target `develop`, and link the original threads from its description.
+- **Findings from a review go into the review, never into new issues.** When the merge request is already merged, the review has nowhere to land: turn the findings into a follow-up merge request that fixes them, target `develop`, and link the original threads from its description. The only exception is the case above where you cannot push and forking is refused: then no follow-up merge request can exist, and the issue with a ready-to-apply diff is the fallback.
 
 ### Stacking a merge request on another one
 
