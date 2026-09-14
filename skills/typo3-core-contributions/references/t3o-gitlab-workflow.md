@@ -214,8 +214,10 @@ three of them on `ter` in one pass (2026-09-14) turned up four things:
 
   ```bash
   git -C .bare worktree add --detach ../mr-x origin/task/x
+  old_sha=$(git -C ../mr-x rev-parse HEAD)
   git -C ../mr-x rebase origin/develop
-  git -C ../mr-x push --force-with-lease=task/x:<old-sha> origin HEAD:refs/heads/task/x
+  git -C ../mr-x push --force-with-lease=refs/heads/task/x:"$old_sha" \
+    origin HEAD:refs/heads/task/x
   ```
 
 - **A conflict where `develop` rewrote the code leaves stale text behind.**
@@ -225,8 +227,10 @@ three of them on `ter` in one pass (2026-09-14) turned up four things:
   test counts they quote. On `!880` a whole commit-message paragraph described
   an `!is_array()` removal that no longer existed after the rebase.
 - **A description written back through the API reads back one newline short**
-  when the original was fetched with `jq -r`. Compare the text with trailing
-  whitespace stripped before concluding that the `PUT` did not apply.
+  when the original was fetched with `jq -r`. Drop that one terminal newline
+  and compare the rest exactly before concluding that the `PUT` did not apply
+  — stripping all trailing whitespace would also swallow Markdown hard breaks
+  and make a changed description look unchanged.
 
 ### Issue templates are not optional furniture
 
