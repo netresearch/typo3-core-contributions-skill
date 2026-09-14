@@ -165,6 +165,8 @@ The binding rules:
 - **Branch naming** is documented as `feature/<issue-number>-<description>` and `hotfix/<description>`. Repo practice also uses `task/` and `bugfix/` prefixes; keep the issue number either way.
 - **The MR description must state the changes *and the testing done*.** An MR without a testing section is incomplete by their rules.
 - **Commit subjects use the Core prefixes** — `[BUGFIX]`, `[TASK]`, `[FEATURE]` — so `validate-commit-message.py` still applies, minus the Gerrit-only `Change-Id`. Use `Relates: #<iid>` for the site issue.
+- **Maintainers merge with review threads still open.** Nothing in `ter` blocks a merge on unresolved discussions, and a merge can land while a review is being written. Read the merge request's `state` again immediately before posting review comments — a check of `sha` and `diff_refs` alone does not tell you. (`!911` was merged at 14:31 UTC; three review threads arrived at 14:52 and were never read.)
+- **Findings from a review go into the review, never into new issues.** When the merge request is already merged, the review has nowhere to land: turn the findings into a follow-up merge request that fixes them, target `develop`, and link the original threads from its description.
 
 ### Stacking a merge request on another one
 
@@ -315,6 +317,15 @@ PHP_CS_FIXER_IGNORE_ENV=1 vendor/bin/php-cs-fixer fix --dry-run -n \
 
 `test:unit` needs `TYPO3_PATH_WEB="$PWD/public"` and an existing
 `public/fileadmin/currentcoredata.json`.
+
+The suite leaves `public/fileadmin` behind without read permission for its
+owner (`d-wxr----t`), so removing a scratch clone afterwards fails with
+`rm: cannot remove 'ter/public/fileadmin': Permission denied`. Give the
+directory its permissions back first:
+
+```bash
+chmod u+rwx ter/public/fileadmin && rm -rf ter
+```
 
 Infection (`composer test:mutation`) validates the PHPUnit configuration it
 generates against `https://schema.phpunit.de/<version>/phpunit.xsd`, and
@@ -555,6 +566,10 @@ Uploads are project-scoped, so the same hash can be embedded in an issue and in
 a merge request of that project.
 
 ## Reporting findings
+
+This section is about findings from your own analysis of a site. Findings from
+reviewing someone's merge request are different: they belong in that review, or
+in a follow-up merge request once it is merged — see *Contribution rules* above.
 
 One finding, one ticket. A long comment listing six problems gives none of them
 a place to be discussed, rejected or closed. Make the comment an index that
