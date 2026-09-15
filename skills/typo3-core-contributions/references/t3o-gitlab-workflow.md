@@ -356,6 +356,24 @@ PHP_CS_FIXER_IGNORE_ENV=1 vendor/bin/php-cs-fixer fix --dry-run -n \
   --config=.php-cs-fixer.dist.php <changed files>
 ```
 
+**`test:typoscript` has no composer script, so a four-gate local run still
+pushes a red pipeline.** The job comes from the shared template and installs
+the linter itself; `composer.json` never mentions it, which is exactly why it
+is the gate that gets forgotten. Install it once outside the repository — a
+`composer require` inside `ter` would change its lock file:
+
+```bash
+mkdir -p /tmp/tslint && (cd /tmp/tslint && composer require -n helmich/typo3-typoscript-lint:^3.3)
+/tmp/tslint/vendor/bin/typoscript-lint -c typoscript-lint.yml --fail-on-warnings   # from the repo root
+```
+
+The warning that fails it is not a syntax error. A dotted assignment whose
+prefix already has a block elsewhere in the file — `tx_terfe2_rating.mvc.x = 1`
+written below an existing `tx_terfe2_rating { … }` — reports *Operation on
+value "…", although nested statement for path "…" exists at line N* and, under
+`--fail-on-warnings`, exits 2. Put the assignment inside the existing block
+instead of appending a dotted line (ter !920, 2026-09-14).
+
 `test:unit` needs `TYPO3_PATH_WEB="$PWD/public"` and an existing
 `public/fileadmin/currentcoredata.json`.
 
