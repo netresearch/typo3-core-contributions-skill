@@ -5,7 +5,9 @@ git.typo3.org GitLab helper for t3o site repositories.
 Covers the operations that are easy to get wrong by hand: reading your real
 access level before planning, writing issues and merge requests with a
 read-back check (GitLab answers 200 and silently drops fields you may not set),
-and fingerprinting a live response from a site behind the Anubis bot wall.
+keeping an open merge request current (title, description, labels, draft
+state), reading its merge gate and awaiting its pipeline, and
+fingerprinting a live response from a site behind the Anubis bot wall.
 
 Not for TYPO3 Core patches - those go to Gerrit, see references/gerrit-workflow.md.
 """
@@ -16,6 +18,7 @@ import argparse
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -252,6 +255,128 @@ def cmd_mr_create(args: argparse.Namespace) -> None:
     )
 
 
+DRAFT_PREFIX = "Draft: "
+# GitLab derives `draft` from the title prefix; there is no boolean to set.
+TERMINAL_PIPELINE_STATUS = ("success", "failed", "canceled", "skipped", "manual")
+
+
+def mr_path(project: str, iid: str) -> str:
+    return f"/projects/{encoded(project)}/merge_requests/{iid}"
+
+
+def strip_draft(title: str) -> str:
+    return title[len(DRAFT_PREFIX) :] if title.lower().startswith("draft:") else title
+
+
+def cmd_mr_update(args: argparse.Namespace) -> None:
+    """Change title, description, labels or draft state of an existing MR.
+
+    Without this the only way to take an MR out of draft, add a label or
+    refresh a description after a review round is a hand-rolled curl carrying
+    the token on the command line - dozens of times in a single session.
+    """
+    labels = [label for label in (args.label or []) if label]
+    body: dict = {}
+    title = args.title
+    if args.draft is not None and title is None:
+        title = strip_draft(str(call(mr_path(args.project, args.iid))["title"]))
+    if title is not None:
+        body["title"] = (
+            f"{DRAFT_PREFIX}{strip_draft(title)}" if args.draft else strip_draft(title)
+        )
+    description = read_text_arg(args.description, args.description_file)
+    if description is not None:
+        body["description"] = description
+    if labels:
+        body["add_labels"] = ",".join(labels)
+    if not body:
+        sys.exit(
+            "Nothing to update - pass --title, --description[-file], --label, "
+            "--draft or --ready."
+        )
+    merge_request = call(mr_path(args.project, args.iid), "PUT", body)
+    print(
+        f"!{merge_request['iid']} updated - draft={merge_request['draft']} "
+        f"{merge_request['web_url']}"
+    )
+    report_labels(merge_request.get("labels") or [], labels)
+
+
+def cmd_mr_show(args: argparse.Namespace) -> None:
+    """The merge gate in one call: state, draft, why it cannot merge, threads."""
+    merge_request = call(mr_path(args.project, args.iid))
+    pipeline = merge_request.get("head_pipeline") or {}
+    print(
+        f"!{merge_request['iid']} {merge_request['state']} "
+        f"draft={merge_request['draft']} sha={str(merge_request['sha'])[:8]}"
+    )
+    # detailed_merge_status names the reason; merge_status only says "cannot".
+    print(f"  merge status: {merge_request.get('detailed_merge_status')}")
+    print(f"  pipeline: {pipeline.get('status', 'none')} (id {pipeline.get('id')})")
+    print(
+        f"  threads unresolved: {not merge_request.get('blocking_discussions_resolved', True)}"
+    )
+    print(f"  {merge_request['web_url']}")
+
+
+def pipeline_for(project: str, iid: str | None, pipeline_id: str | None) -> dict:
+    if pipeline_id:
+        return call(f"/projects/{encoded(project)}/pipelines/{pipeline_id}")
+    pipelines = call(f"{mr_path(project, str(iid))}/pipelines")
+    if not pipelines:
+        sys.exit(
+            f"No pipeline on !{iid}. Unauthenticated reads answer 200 with an "
+            "empty array, so check the token before reading this as 'none ran'."
+        )
+    return call(f"/projects/{encoded(project)}/pipelines/{pipelines[0]['id']}")
+
+
+def print_failed_jobs(project: str, pipeline_id: object) -> None:
+    jobs = call(
+        f"/projects/{encoded(project)}/pipelines/{pipeline_id}/jobs?per_page=100"
+    )
+    for job in jobs if isinstance(jobs, list) else []:
+        if job.get("status") == "failed":
+            print(f"  failed: {job['name']} {job['web_url']}")
+
+
+def cmd_pipeline_status(args: argparse.Namespace) -> None:
+    pipeline = pipeline_for(args.project, args.merge_request, args.id)
+    print(
+        f"pipeline {pipeline['id']} {pipeline['status']} "
+        f"sha={str(pipeline['sha'])[:8]} {pipeline['web_url']}"
+    )
+    if pipeline["status"] == "failed":
+        print_failed_jobs(args.project, pipeline["id"])
+
+
+def cmd_pipeline_wait(args: argparse.Namespace) -> None:
+    """Poll until the pipeline reaches a terminal status.
+
+    A failed probe is not a state: a transport error leaves the pipeline
+    "still running" and the loop keeps waiting rather than reporting a result
+    it never read.
+    """
+    pipeline = pipeline_for(args.project, args.merge_request, args.id)
+    project, pipeline_id = args.project, pipeline["id"]
+    deadline = time.monotonic() + args.timeout
+    while True:
+        status = pipeline["status"]
+        if status in TERMINAL_PIPELINE_STATUS:
+            print(f"pipeline {pipeline_id} {status} {pipeline['web_url']}")
+            if status == "failed":
+                print_failed_jobs(project, pipeline_id)
+                sys.exit(1)
+            return
+        if time.monotonic() >= deadline:
+            sys.exit(
+                f"pipeline {pipeline_id} still {status} after {args.timeout}s - "
+                "the wait ran out, this is not a result."
+            )
+        time.sleep(args.interval)
+        pipeline = call(f"/projects/{encoded(project)}/pipelines/{pipeline_id}")
+
+
 def cmd_link(args: argparse.Namespace) -> None:
     target_project, _, target_iid = args.to.rpartition("#")
     if not target_project or not target_iid.isdigit():
@@ -376,6 +501,34 @@ def build_parser() -> argparse.ArgumentParser:
     mr_create.add_argument("--draft", action="store_true", default=True)
     mr_create.add_argument("--no-draft", dest="draft", action="store_false")
     mr_create.set_defaults(func=cmd_mr_create)
+
+    mr_update = mr_sub.add_parser("update")
+    mr_update.add_argument("project")
+    mr_update.add_argument("iid")
+    mr_update.add_argument("--title")
+    mr_update.add_argument("--description")
+    mr_update.add_argument("--description-file")
+    mr_update.add_argument("--label", action="append")
+    mr_update.add_argument("--draft", action="store_true", default=None)
+    mr_update.add_argument("--ready", dest="draft", action="store_false")
+    mr_update.set_defaults(func=cmd_mr_update)
+
+    mr_show = mr_sub.add_parser("show", help="state, draft, merge status, threads")
+    mr_show.add_argument("project")
+    mr_show.add_argument("iid")
+    mr_show.set_defaults(func=cmd_mr_show)
+
+    pipeline = subparsers.add_parser("pipeline", help="read or await a pipeline")
+    pipeline_sub = pipeline.add_subparsers(dest="pipeline_command", required=True)
+    for name, func in (("status", cmd_pipeline_status), ("wait", cmd_pipeline_wait)):
+        sub = pipeline_sub.add_parser(name)
+        sub.add_argument("project")
+        sub.add_argument("--merge-request", help="read the newest pipeline of this MR")
+        sub.add_argument("--id", help="a pipeline id, instead of --merge-request")
+        if name == "wait":
+            sub.add_argument("--interval", type=int, default=60)
+            sub.add_argument("--timeout", type=int, default=3600)
+        sub.set_defaults(func=func)
 
     link = subparsers.add_parser("link", help="relate two issues")
     link.add_argument("project")

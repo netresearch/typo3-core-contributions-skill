@@ -78,12 +78,19 @@ so prove it afterwards with the `curl` above.
 `${CLAUDE_SKILL_DIR}/scripts/t3o-gitlab.py` wraps the calls below — start there
 rather than hand-rolling curl.
 
-Mind what it does **not** wrap, so you do not go looking for a subcommand that
-is not there: `mr` can only `create`. Updating a merge request's description or
-title, closing or reopening it (`state_event`), and reading pipeline status all
-go through the REST API directly. `update` exists only under `issue`. Whenever
-you do fall back to curl, read the field back afterwards — the PUT answers
-`200` either way.
+It covers a merge request's whole life: `mr create`, `mr update` (title,
+`--description-file`, `--label`, `--draft`/`--ready`) and `mr show` — which
+prints state, draft, `detailed_merge_status`, the head pipeline and whether
+threads are unresolved, i.e. the merge gate in one call — plus `pipeline
+status` and `pipeline wait --merge-request <iid>`, which polls to a terminal
+status and lists the failed jobs. Reach for those before a hand-rolled curl:
+one session re-inlined `PRIVATE-TOKEN: $(cat ~/.secrets/…)` about sixty times
+for exactly these operations, and one of its hand-written `sleep` watchers was
+killed by the OOM killer mid-wait (2026-09-14).
+
+Mind what it still does **not** wrap: closing or reopening an MR
+(`state_event`), merging, and reading discussions. Whenever you do fall back to
+curl, read the field back afterwards — the PUT answers `200` either way.
 
 ### Which transport answers what
 
