@@ -14,12 +14,14 @@ SCRIPT="$(cd "$HERE/.." && pwd)/skills/typo3-core-contributions/scripts/t3o-gitl
 
 fail=0
 check() { # check <name> <expected> <actual>
-    if [[ "$2" == "$3" ]]; then
-        echo "  ok   $1"
+    local name="$1" expected="$2" actual="$3"
+    if [[ "$expected" == "$actual" ]]; then
+        echo "  ok   $name"
     else
-        echo "  FAIL $1: expected '$2', got '$3'"
+        echo "  FAIL $name: expected '$expected', got '$actual'"
         fail=1
     fi
+    return 0
 }
 
 echo "t3o-gitlab.py"

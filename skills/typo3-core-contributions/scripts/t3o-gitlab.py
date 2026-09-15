@@ -126,17 +126,19 @@ def encoded(project: str) -> str:
     return urllib.parse.quote(project, safe="")
 
 
-def numeric(value: Any, what: str) -> str:
-    """An iid or id, proven to be digits before it is put into a path.
+def numeric(value: Any, what: str) -> int:
+    """An iid or id as an int, before it is put into a path.
 
     Both ends need this: an argument is whatever the caller typed, and an id
-    read back from a response is remote input. Without the check either can
-    carry `../` and address an endpoint this script never meant to call.
+    read back from a response is remote input. Without it either can carry
+    `../` and address an endpoint this script never meant to call. Returning
+    an int rather than the validated string is what makes that impossible —
+    there is no string left to smuggle a path separator in.
     """
     text = str(value)
     if not text.isdigit():
         sys.exit(f"Not a numeric {what}: {text!r}")
-    return text
+    return int(text)
 
 
 def read_text_arg(value: str | None, file_arg: str | None) -> str | None:
@@ -250,7 +252,7 @@ def cmd_mr_create(args: argparse.Namespace) -> None:
     if args.target == "main":
         sys.exit("t3o sites take merge requests against 'develop', never 'main'.")
     title = args.title
-    if args.draft and not title.lower().startswith("draft:"):
+    if args.draft and not title.lower().startswith(DRAFT_MARKER):
         title = f"Draft: {title}"
     description = read_text_arg(args.description, args.description_file) or ""
     if "testing" not in description.lower():
@@ -276,7 +278,10 @@ def cmd_mr_create(args: argparse.Namespace) -> None:
 
 
 DRAFT_PREFIX = "Draft: "
+DRAFT_MARKER = "draft:"
 # GitLab derives `draft` from the title prefix; there is no boolean to set.
+# It matches case-insensitively and without the space, so the marker and the
+# prefix we write are not the same string.
 TERMINAL_PIPELINE_STATUS = ("success", "failed", "canceled", "skipped", "manual")
 
 
@@ -285,11 +290,11 @@ def mr_path(project: str, iid: str) -> str:
 
 
 def strip_draft(title: str) -> str:
-    # "draft:" is six characters; DRAFT_PREFIX has a trailing space that the
-    # title may not, and slicing by its length ate the first letter.
-    return (
-        title[len("draft:") :].lstrip() if title.lower().startswith("draft:") else title
-    )
+    # DRAFT_PREFIX has a trailing space the title may not, and slicing by its
+    # length ate the first letter of "Draft:fix".
+    if not title.lower().startswith(DRAFT_MARKER):
+        return title
+    return title[len(DRAFT_MARKER) :].lstrip()
 
 
 def cmd_mr_update(args: argparse.Namespace) -> None:
