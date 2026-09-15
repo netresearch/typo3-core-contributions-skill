@@ -14,7 +14,7 @@ SCRIPT="$(cd "$HERE/.." && pwd)/skills/typo3-core-contributions/scripts/t3o-gitl
 
 fail=0
 check() { # check <name> <expected> <actual>
-    if [ "$2" = "$3" ]; then
+    if [[ "$2" == "$3" ]]; then
         echo "  ok   $1"
     else
         echo "  FAIL $1: expected '$2', got '$3'"
@@ -24,7 +24,7 @@ check() { # check <name> <expected> <actual>
 
 echo "t3o-gitlab.py"
 
-[ -f "$SCRIPT" ] || { echo "  FAIL script not found at $SCRIPT"; exit 1; }
+[[ -f "$SCRIPT" ]] || { echo "  FAIL script not found at $SCRIPT"; exit 1; }
 
 # Parsing must not need a token: an argument mistake should not depend on
 # whether a PAT happens to be present.
@@ -72,5 +72,5 @@ PY
 check "strip_draft handles both cases and a plain title" "True" "$(echo "$out" | sed -n 1p)"
 check "mr_path url-encodes the project" "/projects/a%2Fb/merge_requests/7" "$(echo "$out" | sed -n 2p)"
 
-[ "$fail" -eq 0 ] && echo "  all checks passed"
+[[ "$fail" -eq 0 ]] && echo "  all checks passed"
 exit "$fail"

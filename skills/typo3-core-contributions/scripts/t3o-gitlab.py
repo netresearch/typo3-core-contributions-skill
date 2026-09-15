@@ -23,6 +23,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 HOST = "https://git.typo3.org"
 API = f"{HOST}/api/v4"
@@ -94,7 +95,7 @@ def open_checked(request: urllib.request.Request):
     return urllib.request.urlopen(request)  # nosemgrep: dynamic-urllib-use-detected
 
 
-def call(path: str, method: str = "GET", body: dict | None = None) -> object:
+def call(path: str, method: str = "GET", body: dict | None = None) -> Any:
     if not path.startswith("/") or "://" in path:
         sys.exit(f"Refusing suspicious API path: {path}")
     request = https_request(
@@ -123,6 +124,19 @@ def call(path: str, method: str = "GET", body: dict | None = None) -> object:
 
 def encoded(project: str) -> str:
     return urllib.parse.quote(project, safe="")
+
+
+def numeric(value: Any, what: str) -> str:
+    """An iid or id, proven to be digits before it is put into a path.
+
+    Both ends need this: an argument is whatever the caller typed, and an id
+    read back from a response is remote input. Without the check either can
+    carry `../` and address an endpoint this script never meant to call.
+    """
+    text = str(value)
+    if not text.isdigit():
+        sys.exit(f"Not a numeric {what}: {text!r}")
+    return text
 
 
 def read_text_arg(value: str | None, file_arg: str | None) -> str | None:
@@ -207,7 +221,11 @@ def cmd_issue_update(args: argparse.Namespace) -> None:
         body["labels"] = ",".join(labels)
     if not body:
         sys.exit("Nothing to update - pass --title, --description[-file] or --label.")
-    issue = call(f"/projects/{encoded(args.project)}/issues/{args.iid}", "PUT", body)
+    issue = call(
+        f"/projects/{encoded(args.project)}/issues/{numeric(args.iid, 'issue iid')}",
+        "PUT",
+        body,
+    )
     print(f"#{issue['iid']} updated - {issue['web_url']}")
     report_labels(issue.get("labels") or [], labels)
 
@@ -221,7 +239,9 @@ def cmd_note(args: argparse.Namespace) -> None:
     kind = "merge_requests" if args.merge_request else "issues"
     iid = args.merge_request or args.issue
     note = call(
-        f"/projects/{encoded(args.project)}/{kind}/{iid}/notes", "POST", {"body": text}
+        f"/projects/{encoded(args.project)}/{kind}/{numeric(iid, 'iid')}/notes",
+        "POST",
+        {"body": text},
     )
     print(f"note {note['id']} added to {kind[:-1]} {iid}")
 
@@ -261,7 +281,7 @@ TERMINAL_PIPELINE_STATUS = ("success", "failed", "canceled", "skipped", "manual"
 
 
 def mr_path(project: str, iid: str) -> str:
-    return f"/projects/{encoded(project)}/merge_requests/{iid}"
+    return f"/projects/{encoded(project)}/merge_requests/{numeric(iid, 'MR iid')}"
 
 
 def strip_draft(title: str) -> str:
@@ -321,19 +341,25 @@ def cmd_mr_show(args: argparse.Namespace) -> None:
 
 def pipeline_for(project: str, iid: str | None, pipeline_id: str | None) -> dict:
     if pipeline_id:
-        return call(f"/projects/{encoded(project)}/pipelines/{pipeline_id}")
+        return call(
+            f"/projects/{encoded(project)}/pipelines/{numeric(pipeline_id, 'pipeline id')}"
+        )
     pipelines = call(f"{mr_path(project, str(iid))}/pipelines")
     if not pipelines:
         sys.exit(
             f"No pipeline on !{iid}. Unauthenticated reads answer 200 with an "
             "empty array, so check the token before reading this as 'none ran'."
         )
-    return call(f"/projects/{encoded(project)}/pipelines/{pipelines[0]['id']}")
+    return call(
+        f"/projects/{encoded(project)}/pipelines/"
+        f"{numeric(pipelines[0]['id'], 'pipeline id')}"
+    )
 
 
-def print_failed_jobs(project: str, pipeline_id: object) -> None:
+def print_failed_jobs(project: str, pipeline_id: Any) -> None:
     jobs = call(
-        f"/projects/{encoded(project)}/pipelines/{pipeline_id}/jobs?per_page=100"
+        f"/projects/{encoded(project)}/pipelines/"
+        f"{numeric(pipeline_id, 'pipeline id')}/jobs?per_page=100"
     )
     for job in jobs if isinstance(jobs, list) else []:
         if job.get("status") == "failed":
@@ -374,7 +400,9 @@ def cmd_pipeline_wait(args: argparse.Namespace) -> None:
                 "the wait ran out, this is not a result."
             )
         time.sleep(args.interval)
-        pipeline = call(f"/projects/{encoded(project)}/pipelines/{pipeline_id}")
+        pipeline = call(
+            f"/projects/{encoded(project)}/pipelines/{numeric(pipeline_id, 'pipeline id')}"
+        )
 
 
 def cmd_link(args: argparse.Namespace) -> None:
