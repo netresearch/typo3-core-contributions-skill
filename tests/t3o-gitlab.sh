@@ -84,5 +84,16 @@ PY
 check "strip_draft handles both cases and a plain title" "True" "$(echo "$out" | sed -n 1p)"
 check "mr_path url-encodes the project" "/projects/a%2Fb/merge_requests/7" "$(echo "$out" | sed -n 2p)"
 
+# isdigit() accepts "²" and Arabic-Indic digits; neither is an id. Assert the
+# message, not the exit code: a traceback from int("²") also exits non-zero,
+# so a status-only check passes against the very bug this pins.
+for bad in "²" "١٢٣" "1/../2" "" "-1"; do
+    out="$(env -u GIT_TYPO3_ORG_TOKEN python3 "$SCRIPT" mr show a/b "$bad" 2>&1)"
+    case "$out" in
+        *"Not a numeric"*) echo "  ok   mr show refuses iid '$bad' with a message" ;;
+        *) echo "  FAIL mr show on iid '$bad' did not report it: $out"; fail=1 ;;
+    esac
+done
+
 [[ "$fail" -eq 0 ]] && echo "  all checks passed"
 exit "$fail"

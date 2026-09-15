@@ -136,7 +136,9 @@ def numeric(value: Any, what: str) -> int:
     there is no string left to smuggle a path separator in.
     """
     text = str(value)
-    if not text.isdigit():
+    # isdigit() is true for "²" (int() then raises) and for "١٢٣" (int() gives
+    # 123, an id the caller never typed). Only ASCII decimals are an id here.
+    if not text.isascii() or not text.isdecimal():
         sys.exit(f"Not a numeric {what}: {text!r}")
     return int(text)
 
