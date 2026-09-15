@@ -54,6 +54,14 @@ case "$out" in
     *) echo "  FAIL mr update message unhelpful: $out"; fail=1 ;;
 esac
 
+# `--draft` and `--ready` are one state, not two flags.
+env -u GIT_TYPO3_ORG_TOKEN python3 "$SCRIPT" mr update a/b 1 --draft --ready >/dev/null 2>&1
+check "mr update rejects --draft with --ready" "2" "$?"
+
+# A pipeline command with no selector once asked for pipeline "None".
+env -u GIT_TYPO3_ORG_TOKEN python3 "$SCRIPT" pipeline status a/b >/dev/null 2>&1
+check "pipeline status requires a selector" "2" "$?"
+
 # GitLab derives `draft` from the title prefix; strip_draft() is that rule.
 out="$(python3 - "$SCRIPT" <<'PY'
 import importlib.util, sys
@@ -63,6 +71,8 @@ spec.loader.exec_module(mod)
 cases = {
     "Draft: [TASK] x": "[TASK] x",
     "draft: [TASK] x": "[TASK] x",
+    # no space after the colon: slicing by len("Draft: ") ate the first letter
+    "Draft:[TASK] x": "[TASK] x",
     "[TASK] x": "[TASK] x",
 }
 print(all(mod.strip_draft(k) == v for k, v in cases.items()))

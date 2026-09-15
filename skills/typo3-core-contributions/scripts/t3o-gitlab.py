@@ -285,7 +285,11 @@ def mr_path(project: str, iid: str) -> str:
 
 
 def strip_draft(title: str) -> str:
-    return title[len(DRAFT_PREFIX) :] if title.lower().startswith("draft:") else title
+    # "draft:" is six characters; DRAFT_PREFIX has a trailing space that the
+    # title may not, and slicing by its length ate the first letter.
+    return (
+        title[len("draft:") :].lstrip() if title.lower().startswith("draft:") else title
+    )
 
 
 def cmd_mr_update(args: argparse.Namespace) -> None:
@@ -333,9 +337,10 @@ def cmd_mr_show(args: argparse.Namespace) -> None:
     # detailed_merge_status names the reason; merge_status only says "cannot".
     print(f"  merge status: {merge_request.get('detailed_merge_status')}")
     print(f"  pipeline: {pipeline.get('status', 'none')} (id {pipeline.get('id')})")
-    print(
-        f"  threads unresolved: {not merge_request.get('blocking_discussions_resolved', True)}"
-    )
+    # Not "threads": the flag is the merge gate, and a project that allows
+    # merging with open threads reports True while threads remain open.
+    blocking = not merge_request.get("blocking_discussions_resolved", True)
+    print(f"  blocking discussions unresolved: {blocking}")
     print(f"  {merge_request['web_url']}")
 
 
@@ -392,6 +397,9 @@ def cmd_pipeline_wait(args: argparse.Namespace) -> None:
             print(f"pipeline {pipeline_id} {status} {pipeline['web_url']}")
             if status == "failed":
                 print_failed_jobs(project, pipeline_id)
+            # A canceled pipeline is not a passed one: a caller chaining on
+            # this must not read "canceled" as green.
+            if status in ("failed", "canceled"):
                 sys.exit(1)
             return
         if time.monotonic() >= deadline:
@@ -400,9 +408,16 @@ def cmd_pipeline_wait(args: argparse.Namespace) -> None:
                 "the wait ran out, this is not a result."
             )
         time.sleep(args.interval)
-        pipeline = call(
-            f"/projects/{encoded(project)}/pipelines/{numeric(pipeline_id, 'pipeline id')}"
-        )
+        try:
+            pipeline = call(
+                f"/projects/{encoded(project)}/pipelines/"
+                f"{numeric(pipeline_id, 'pipeline id')}"
+            )
+        except urllib.error.URLError as error:
+            # DNS, TLS or a dropped connection: keep the last state and poll
+            # again. call() only handles HTTPError, so without this the loop
+            # dies on a hiccup instead of waiting, which is what it is for.
+            print(f"  probe failed ({error.reason}), still waiting", file=sys.stderr)
 
 
 def cmd_link(args: argparse.Namespace) -> None:
@@ -537,8 +552,9 @@ def build_parser() -> argparse.ArgumentParser:
     mr_update.add_argument("--description")
     mr_update.add_argument("--description-file")
     mr_update.add_argument("--label", action="append")
-    mr_update.add_argument("--draft", action="store_true", default=None)
-    mr_update.add_argument("--ready", dest="draft", action="store_false")
+    draft_state = mr_update.add_mutually_exclusive_group()
+    draft_state.add_argument("--draft", action="store_true", default=None)
+    draft_state.add_argument("--ready", dest="draft", action="store_false")
     mr_update.set_defaults(func=cmd_mr_update)
 
     mr_show = mr_sub.add_parser("show", help="state, draft, merge status, threads")
@@ -551,8 +567,11 @@ def build_parser() -> argparse.ArgumentParser:
     for name, func in (("status", cmd_pipeline_status), ("wait", cmd_pipeline_wait)):
         sub = pipeline_sub.add_parser(name)
         sub.add_argument("project")
-        sub.add_argument("--merge-request", help="read the newest pipeline of this MR")
-        sub.add_argument("--id", help="a pipeline id, instead of --merge-request")
+        # Exactly one selector: neither asked for pipeline "None", both
+        # silently ignored --merge-request.
+        selector = sub.add_mutually_exclusive_group(required=True)
+        selector.add_argument("--merge-request", help="newest pipeline of this MR")
+        selector.add_argument("--id", help="a pipeline id, instead of --merge-request")
         if name == "wait":
             sub.add_argument("--interval", type=int, default=60)
             sub.add_argument("--timeout", type=int, default=3600)
