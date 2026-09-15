@@ -562,7 +562,9 @@ def build_parser() -> argparse.ArgumentParser:
     draft_state.add_argument("--ready", dest="draft", action="store_false")
     mr_update.set_defaults(func=cmd_mr_update)
 
-    mr_show = mr_sub.add_parser("show", help="state, draft, merge status, threads")
+    mr_show = mr_sub.add_parser(
+        "show", help="state, draft, merge status, blocking discussions"
+    )
     mr_show.add_argument("project")
     mr_show.add_argument("iid")
     mr_show.set_defaults(func=cmd_mr_show)
