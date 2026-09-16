@@ -66,7 +66,7 @@ check "pipeline status requires a selector" "2" "$?"
 
 # GitLab derives `draft` from the title prefix; strip_draft() is that rule.
 out="$(python3 - "$SCRIPT" <<'PY'
-import importlib.util, sys
+import importlib.util, sys, time
 spec = importlib.util.spec_from_file_location("t3o", sys.argv[1])
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
@@ -80,11 +80,24 @@ cases = {
 print(all(mod.strip_draft(k) == v for k, v in cases.items()))
 print(mod.mr_path("a/b", "7"))
 print(mod.positive_int("60"))
+print(mod.time_left(None) is None)
+# A budget that is gone must not buy one more request. The refresh timeout
+# was clamped to 1s, so every call could still run a second past the
+# deadline, and the initial lookup carried no timeout at all.
+print(round(mod.time_left(time.monotonic() + 5) or 0))
+try:
+    mod.time_left(time.monotonic() - 1)
+    print("no exit")
+except SystemExit as expired:
+    print("budget ran out" in str(expired))
 PY
 )"
 check "strip_draft handles both cases and a plain title" "True" "$(echo "$out" | sed -n 1p)"
 check "mr_path url-encodes the project" "/projects/a%2Fb/merge_requests/7" "$(echo "$out" | sed -n 2p)"
 check "positive_int accepts a plain interval" "60" "$(echo "$out" | sed -n 3p)"
+check "time_left is unbounded without a deadline" "True" "$(echo "$out" | sed -n 4p)"
+check "time_left reports what is left of the budget" "5" "$(echo "$out" | sed -n 5p)"
+check "time_left refuses a request past the deadline" "True" "$(echo "$out" | sed -n 6p)"
 
 # An interval is seconds, and seconds are positive: -1 reached time.sleep(-1)
 # as a traceback, 0 made the poll a tight loop.

@@ -376,12 +376,40 @@ def cmd_mr_show(args: argparse.Namespace) -> None:
     print(f"  {merge_request['web_url']}")
 
 
-def pipeline_for(project: str, iid: str | None, pipeline_id: str | None) -> dict:
+def time_left(deadline: float | None) -> float | None:
+    """What a request may still take, measured when it is about to be issued.
+
+    None is "nothing is bounding this" - `pipeline status` has no deadline.
+    A budget that is gone ends the run here instead of spending one more
+    request past the deadline the caller asked for.
+    """
+    if deadline is None:
+        return None
+    left = deadline - time.monotonic()
+    if left <= 0:
+        sys.exit(
+            "The --timeout budget ran out while reading the pipeline - "
+            "this is not a result."
+        )
+    return left
+
+
+def pipeline_for(
+    project: str,
+    iid: str | None,
+    pipeline_id: str | None,
+    deadline: float | None = None,
+) -> dict:
+    # Every call re-reads the budget: the lookup can take two requests, and
+    # the first one may have spent what the second was going to use.
     if pipeline_id:
         return call(
-            f"/projects/{encoded(project)}/pipelines/{numeric(pipeline_id, 'pipeline id')}"
+            f"/projects/{encoded(project)}/pipelines/{numeric(pipeline_id, 'pipeline id')}",
+            timeout=time_left(deadline),
         )
-    pipelines = call(f"{mr_path(project, str(iid))}/pipelines")
+    pipelines = call(
+        f"{mr_path(project, str(iid))}/pipelines", timeout=time_left(deadline)
+    )
     if not pipelines:
         sys.exit(
             f"No pipeline on !{iid}. Unauthenticated reads answer 200 with an "
@@ -389,7 +417,8 @@ def pipeline_for(project: str, iid: str | None, pipeline_id: str | None) -> dict
         )
     return call(
         f"/projects/{encoded(project)}/pipelines/"
-        f"{numeric(pipelines[0]['id'], 'pipeline id')}"
+        f"{numeric(pipelines[0]['id'], 'pipeline id')}",
+        timeout=time_left(deadline),
     )
 
 
@@ -426,7 +455,7 @@ def cmd_pipeline_wait(args: argparse.Namespace) -> None:
     """
     # Before the first request: a slow lookup spends the caller's budget too.
     deadline = time.monotonic() + args.timeout
-    pipeline = pipeline_for(args.project, args.merge_request, args.id)
+    pipeline = pipeline_for(args.project, args.merge_request, args.id, deadline)
     project, pipeline_id = args.project, pipeline["id"]
     while True:
         status = pipeline["status"]
@@ -446,12 +475,15 @@ def cmd_pipeline_wait(args: argparse.Namespace) -> None:
             )
         remaining = deadline - time.monotonic()
         time.sleep(min(args.interval, max(remaining, 0)))
+        if time.monotonic() >= deadline:
+            # Back to the top, which reports the timeout. Issuing the request
+            # first would run past the deadline to say the same thing.
+            continue
         try:
             pipeline = call(
                 f"/projects/{encoded(project)}/pipelines/"
                 f"{numeric(pipeline_id, 'pipeline id')}",
-                # Never longer than what is left of --timeout.
-                timeout=max(deadline - time.monotonic(), 1),
+                timeout=time_left(deadline),
             )
         except urllib.error.URLError as error:
             # DNS, TLS or a dropped connection: keep the last state and poll
