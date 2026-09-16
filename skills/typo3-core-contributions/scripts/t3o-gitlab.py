@@ -86,16 +86,26 @@ def https_request(url: str, **kwargs: object) -> urllib.request.Request:
     return urllib.request.Request(url, **kwargs)  # type: ignore[arg-type]
 
 
-def open_checked(request: urllib.request.Request):
+def open_checked(request: urllib.request.Request, timeout: float | None = None):
     """Open a Request whose scheme https_request() has already validated.
 
     The single place this script reaches the network, so the `file://` concern
     behind the urllib audit rule is answered once, in https_request().
+
+    `timeout` is what keeps a wait bounded: without it a stalled connection
+    blocks past any deadline the caller thinks it has.
     """
-    return urllib.request.urlopen(request)  # nosemgrep: dynamic-urllib-use-detected
+    return urllib.request.urlopen(  # nosemgrep: dynamic-urllib-use-detected
+        request, timeout=timeout
+    )
 
 
-def call(path: str, method: str = "GET", body: dict | None = None) -> Any:
+def call(
+    path: str,
+    method: str = "GET",
+    body: dict | None = None,
+    timeout: float | None = None,
+) -> Any:
     if not path.startswith("/") or "://" in path:
         sys.exit(f"Refusing suspicious API path: {path}")
     request = https_request(
@@ -105,7 +115,7 @@ def call(path: str, method: str = "GET", body: dict | None = None) -> Any:
         headers={"PRIVATE-TOKEN": token(), "Content-Type": "application/json"},
     )
     try:
-        with open_checked(request) as response:
+        with open_checked(request, timeout) as response:
             return json.load(response)
     except urllib.error.HTTPError as error:
         detail = error.read().decode(errors="replace")[:400]
@@ -124,6 +134,17 @@ def call(path: str, method: str = "GET", body: dict | None = None) -> Any:
 
 def encoded(project: str) -> str:
     return urllib.parse.quote(project, safe="")
+
+
+def positive_int(value: str) -> int:
+    """An argparse type: seconds, and seconds are positive.
+
+    `--interval -1` otherwise reaches time.sleep(-1) as a traceback, and 0
+    turns the poll into a tight loop against the API.
+    """
+    if not value.isascii() or not value.isdecimal() or int(value) < 1:
+        raise argparse.ArgumentTypeError(f"expected a positive number: {value!r}")
+    return int(value)
 
 
 def numeric(value: Any, what: str) -> int:
@@ -312,9 +333,13 @@ def cmd_mr_update(args: argparse.Namespace) -> None:
     if args.draft is not None and title is None:
         title = strip_draft(str(call(mr_path(args.project, args.iid))["title"]))
     if title is not None:
-        body["title"] = (
-            f"{DRAFT_PREFIX}{strip_draft(title)}" if args.draft else strip_draft(title)
-        )
+        # Only when a draft state was asked for: `--title "Draft: Fix"` alone
+        # must keep the prefix the caller typed, not silently ready the MR.
+        if args.draft is True:
+            title = f"{DRAFT_PREFIX}{strip_draft(title)}"
+        elif args.draft is False:
+            title = strip_draft(title)
+        body["title"] = title
     description = read_text_arg(args.description, args.description_file)
     if description is not None:
         body["description"] = description
@@ -386,6 +411,10 @@ def cmd_pipeline_status(args: argparse.Namespace) -> None:
     )
     if pipeline["status"] == "failed":
         print_failed_jobs(args.project, pipeline["id"])
+    # Same contract as `wait`: a caller chaining on this must not read a failed
+    # or canceled pipeline as green.
+    if pipeline["status"] in ("failed", "canceled"):
+        sys.exit(1)
 
 
 def cmd_pipeline_wait(args: argparse.Namespace) -> None:
@@ -395,9 +424,10 @@ def cmd_pipeline_wait(args: argparse.Namespace) -> None:
     "still running" and the loop keeps waiting rather than reporting a result
     it never read.
     """
+    # Before the first request: a slow lookup spends the caller's budget too.
+    deadline = time.monotonic() + args.timeout
     pipeline = pipeline_for(args.project, args.merge_request, args.id)
     project, pipeline_id = args.project, pipeline["id"]
-    deadline = time.monotonic() + args.timeout
     while True:
         status = pipeline["status"]
         if status in TERMINAL_PIPELINE_STATUS:
@@ -414,11 +444,14 @@ def cmd_pipeline_wait(args: argparse.Namespace) -> None:
                 f"pipeline {pipeline_id} still {status} after {args.timeout}s - "
                 "the wait ran out, this is not a result."
             )
-        time.sleep(args.interval)
+        remaining = deadline - time.monotonic()
+        time.sleep(min(args.interval, max(remaining, 0)))
         try:
             pipeline = call(
                 f"/projects/{encoded(project)}/pipelines/"
-                f"{numeric(pipeline_id, 'pipeline id')}"
+                f"{numeric(pipeline_id, 'pipeline id')}",
+                # Never longer than what is left of --timeout.
+                timeout=max(deadline - time.monotonic(), 1),
             )
         except urllib.error.URLError as error:
             # DNS, TLS or a dropped connection: keep the last state and poll
@@ -582,8 +615,8 @@ def build_parser() -> argparse.ArgumentParser:
         selector.add_argument("--merge-request", help="newest pipeline of this MR")
         selector.add_argument("--id", help="a pipeline id, instead of --merge-request")
         if name == "wait":
-            sub.add_argument("--interval", type=int, default=60)
-            sub.add_argument("--timeout", type=int, default=3600)
+            sub.add_argument("--interval", type=positive_int, default=60)
+            sub.add_argument("--timeout", type=positive_int, default=3600)
         sub.set_defaults(func=func)
 
     link = subparsers.add_parser("link", help="relate two issues")

@@ -79,10 +79,20 @@ cases = {
 }
 print(all(mod.strip_draft(k) == v for k, v in cases.items()))
 print(mod.mr_path("a/b", "7"))
+print(mod.positive_int("60"))
 PY
 )"
 check "strip_draft handles both cases and a plain title" "True" "$(echo "$out" | sed -n 1p)"
 check "mr_path url-encodes the project" "/projects/a%2Fb/merge_requests/7" "$(echo "$out" | sed -n 2p)"
+check "positive_int accepts a plain interval" "60" "$(echo "$out" | sed -n 3p)"
+
+# An interval is seconds, and seconds are positive: -1 reached time.sleep(-1)
+# as a traceback, 0 made the poll a tight loop.
+for bad in "-1" "0" "x"; do
+    env -u GIT_TYPO3_ORG_TOKEN python3 "$SCRIPT" pipeline wait a/b --id 1 \
+        --interval "$bad" >/dev/null 2>&1
+    check "pipeline wait rejects --interval $bad" "2" "$?"
+done
 
 # isdigit() accepts "²" and Arabic-Indic digits; neither is an id. Assert the
 # message, not the exit code: a traceback from int("²") also exits non-zero,
