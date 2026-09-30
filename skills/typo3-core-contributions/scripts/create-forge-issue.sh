@@ -35,7 +35,7 @@ echo -e "${GREEN}TYPO3 Forge Issue Creator${NC}"
 echo ""
 
 # Interactive prompts
-read -p "Issue subject (title): " SUBJECT
+read -r -p "Issue subject (title): " SUBJECT
 if [ -z "$SUBJECT" ]; then
     echo -e "${RED}Error: Subject is required${NC}"
     exit 1
@@ -54,7 +54,7 @@ echo "Select tracker type:"
 echo "  1) Bug"
 echo "  2) Feature"
 echo "  3) Task"
-read -p "Choice [1]: " TRACKER_CHOICE
+read -r -p "Choice [1]: " TRACKER_CHOICE
 TRACKER_CHOICE=${TRACKER_CHOICE:-1}
 
 case $TRACKER_CHOICE in
@@ -69,7 +69,7 @@ echo "Select priority:"
 echo "  1) Must have"
 echo "  2) Should have (recommended)"
 echo "  3) Could have"
-read -p "Choice [2]: " PRIORITY_CHOICE
+read -r -p "Choice [2]: " PRIORITY_CHOICE
 PRIORITY_CHOICE=${PRIORITY_CHOICE:-2}
 
 case $PRIORITY_CHOICE in
@@ -80,7 +80,7 @@ case $PRIORITY_CHOICE in
 esac
 
 echo ""
-read -p "TYPO3 version affected (e.g., 13, 14) [13]: " TYPO3_VERSION
+read -r -p "TYPO3 version affected (e.g., 13, 14) [13]: " TYPO3_VERSION
 TYPO3_VERSION=${TYPO3_VERSION:-13}
 
 echo ""
@@ -94,7 +94,7 @@ echo "  6) Indexed Search (1000)"
 echo "  7) Extension Manager (976)"
 echo "  8) Documentation (1004)"
 echo "  9) Enter category ID manually"
-read -p "Choice [1]: " CATEGORY_CHOICE
+read -r -p "Choice [1]: " CATEGORY_CHOICE
 CATEGORY_CHOICE=${CATEGORY_CHOICE:-1}
 
 case $CATEGORY_CHOICE in
@@ -107,7 +107,7 @@ case $CATEGORY_CHOICE in
     7) CATEGORY_ID=976; CATEGORY_NAME="Extension Manager" ;;
     8) CATEGORY_ID=1004; CATEGORY_NAME="Documentation" ;;
     9)
-        read -p "Enter category ID: " CATEGORY_ID
+        read -r -p "Enter category ID: " CATEGORY_ID
         CATEGORY_NAME="Custom ($CATEGORY_ID)"
         ;;
     *) echo -e "${RED}Invalid choice${NC}"; exit 1 ;;
@@ -115,7 +115,7 @@ esac
 
 # Optional tags
 echo ""
-read -p "Tags (comma-separated, optional): " TAGS
+read -r -p "Tags (comma-separated, optional): " TAGS
 
 # Summary
 echo ""
@@ -128,7 +128,7 @@ echo "  TYPO3 Version: $TYPO3_VERSION"
 [ -n "$TAGS" ] && echo "  Tags: $TAGS"
 echo ""
 
-read -p "Create this issue? [Y/n]: " CONFIRM
+read -r -p "Create this issue? [Y/n]: " CONFIRM
 CONFIRM=${CONFIRM:-Y}
 
 if [[ ! $CONFIRM =~ ^[Yy]$ ]]; then

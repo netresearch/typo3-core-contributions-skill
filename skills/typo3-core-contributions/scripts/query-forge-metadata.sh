@@ -73,21 +73,24 @@ if [[ "$QUERY_TYPE" == "all" ]]; then
     echo -e "${BLUE}=== Usage Examples ===${NC}"
     echo ""
     echo "Create bug in Backend API category:"
-    echo '  curl -X POST \'
-    echo '    -H "Content-Type: application/json" \'
-    echo '    -H "X-Redmine-API-Key: $FORGE_API_KEY" \'
-    echo '    -d '"'"'{'
-    echo '      "issue": {'
-    echo '        "project_id": "typo3cms-core",'
-    echo '        "subject": "Issue title",'
-    echo '        "description": "Description",'
-    echo '        "tracker_id": 1,'
-    echo '        "category_id": 971,'
-    echo '        "priority_id": 4,'
-    echo '        "custom_fields": [{"id": 4, "value": "13"}]'
-    echo '      }'
-    echo '    }'"'"' \'
-    echo '    https://forge.typo3.org/issues.json'
+    # Quoted delimiter: the example is printed verbatim, $FORGE_API_KEY included.
+    cat <<'EXAMPLE'
+  curl -X POST \
+    -H "Content-Type: application/json" \
+    -H "X-Redmine-API-Key: $FORGE_API_KEY" \
+    -d '{
+      "issue": {
+        "project_id": "typo3cms-core",
+        "subject": "Issue title",
+        "description": "Description",
+        "tracker_id": 1,
+        "category_id": 971,
+        "priority_id": 4,
+        "custom_fields": [{"id": 4, "value": "13"}]
+      }
+    }' \
+    https://forge.typo3.org/issues.json
+EXAMPLE
     echo ""
     echo "Or use the interactive script:"
     echo "  ./scripts/create-forge-issue.sh"
