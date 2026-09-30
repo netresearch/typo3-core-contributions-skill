@@ -56,8 +56,9 @@ class CommitMessageValidator:
 
         subject = self.lines[0]
 
-        # Check for commit type
-        type_pattern = r"^\[(?:\[!!!\])?(BUGFIX|FEATURE|TASK|DOCS|SECURITY)\]"
+        # Check for commit type; a breaking change puts [!!!] in front of it,
+        # as in "[!!!][FEATURE] Remove ..." (references/commit-message-format.md)
+        type_pattern = r"^(?:\[!!!\])?\[(BUGFIX|FEATURE|TASK|DOCS|SECURITY)\]"
         match = re.match(type_pattern, subject)
 
         if not match:

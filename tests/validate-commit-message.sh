@@ -75,6 +75,19 @@ sed -i '/^Releases:/d' "$WORK/norel.txt"
 python3 "$SCRIPT" --file "$WORK/norel.txt" >/dev/null 2>&1
 check "rejects a missing Releases footer" 1 "$?"
 
+# A breaking change is written `[!!!][TYPE]` (commit-message-format.md). The
+# type pattern once expected the marker inside the brackets and rejected every
+# breaking change.
+write breaking.txt '[!!!][FEATURE] Remove deprecated TypoScript syntax'
+python3 "$SCRIPT" --file "$WORK/breaking.txt" >/dev/null 2>&1
+check "accepts a [!!!][TYPE] breaking change" 0 "$?"
+write breakingbug.txt '[!!!][BUGFIX] Remove deprecated TypoScript syntax'
+python3 "$SCRIPT" --file "$WORK/breakingbug.txt" 2>&1 | grep -q "unusual for BUGFIX"
+check "warns about a breaking BUGFIX" 0 "$?"
+write nested.txt '[[!!!]FEATURE] Remove deprecated TypoScript syntax'
+python3 "$SCRIPT" --file "$WORK/nested.txt" >/dev/null 2>&1
+check "rejects the marker inside the type brackets" 1 "$?"
+
 echo
 if [ "$fail" -eq 0 ]; then
     echo "All validate-commit-message tests passed"
