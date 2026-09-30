@@ -32,8 +32,10 @@
 ├── assets/                              # Images and diagrams
 ├── Build/                               # Build tooling
 ├── evals/                               # Skill evaluations
+├── tests/                               # Offline tests for the scripts
 ├── docs/                                # Architecture and plans
 │   ├── ARCHITECTURE.md
+│   ├── SECURITY-ASSURANCE.md            # Security assurance case
 │   └── exec-plans/
 └── composer.json                        # Package definition
 ```
@@ -71,3 +73,4 @@ No Makefile or npm scripts. Key scripts live in `skills/typo3-core-contributions
 - [DDEV Setup](skills/typo3-core-contributions/references/ddev-setup-workflow.md)
 - [t3o Sites on git.typo3.org](skills/typo3-core-contributions/references/t3o-gitlab-workflow.md)
 - [Architecture](docs/ARCHITECTURE.md)
+- [Security assurance case](docs/SECURITY-ASSURANCE.md) — trust boundaries, threats, countermeasures and limits
