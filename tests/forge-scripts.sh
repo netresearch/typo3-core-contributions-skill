@@ -81,6 +81,11 @@ check "TYPO3 version field" "14" "$(payload '.issue.custom_fields[] | select(.id
 check "tags field" "perf, ui" "$(payload '.issue.custom_fields[] | select(.id == 3) | .value')"
 grep -q "Issue #: 4242" "$WORK/out"
 check "prints the new issue number" 0 "$?"
+grep -q "Resolves: #4242" "$WORK/out"
+check "prints the Resolves line for the commit" 0 "$?"
+# The colour codes are interpreted, never printed as the text "\033".
+grep -qF '\033' "$WORK/out"
+check "prints no uninterpreted escape sequence" 1 "$?"
 
 # Every prompt left at its default, no tags: Bug, Should have, 13, Misc.
 create 'Fix the thing\nOnly line\n\x04\n\n\n\n\n\n'
