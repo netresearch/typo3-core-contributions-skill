@@ -494,11 +494,14 @@ def cmd_pipeline_wait(args: argparse.Namespace) -> None:
 
 def cmd_link(args: argparse.Namespace) -> None:
     target_project, _, target_iid = args.to.rpartition("#")
-    if not target_project or not target_iid.isdigit():
+    # isascii() as in numeric(): isdigit() alone accepts "²" and "١٢٣".
+    if not target_project or not (target_iid.isascii() and target_iid.isdecimal()):
         sys.exit("--to must look like services/group/project#123")
+    # Checked before the first request, like every other iid put into a path.
+    iid = numeric(args.iid, "issue iid")
     target = call(f"/projects/{encoded(target_project)}")
     call(
-        f"/projects/{encoded(args.project)}/issues/{args.iid}/links",
+        f"/projects/{encoded(args.project)}/issues/{iid}/links",
         "POST",
         {
             "target_project_id": str(target["id"]),

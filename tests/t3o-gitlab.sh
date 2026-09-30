@@ -118,5 +118,28 @@ for bad in "²" "١٢٣" "1/../2" "" "-1"; do
     esac
 done
 
+# `link` builds two paths from iids, and every other subcommand passes its ids
+# through numeric(). HOME points at an empty directory so that no token file
+# is found: a check that got as far as a request would stop at "No token"
+# instead, and fail the assertion rather than reach git.typo3.org.
+empty_home="$(mktemp -d)"
+for bad in "²" "1/../2" "-1"; do
+    out="$(env -u GIT_TYPO3_ORG_TOKEN HOME="$empty_home" python3 "$SCRIPT" \
+        link a/b "$bad" --to c/d#3 2>&1)"
+    case "$out" in
+        *"Not a numeric"*) echo "  ok   link refuses iid '$bad' with a message" ;;
+        *) echo "  FAIL link on iid '$bad' did not report it: $out"; fail=1 ;;
+    esac
+done
+for bad in "c/d#²" "c/d#١٢٣" "c/d#" "#3"; do
+    out="$(env -u GIT_TYPO3_ORG_TOKEN HOME="$empty_home" python3 "$SCRIPT" \
+        link a/b 1 --to "$bad" 2>&1)"
+    case "$out" in
+        *"--to must look like"*) echo "  ok   link refuses --to '$bad' with a message" ;;
+        *) echo "  FAIL link on --to '$bad' did not report it: $out"; fail=1 ;;
+    esac
+done
+rm -rf "$empty_home"
+
 [[ "$fail" -eq 0 ]] && echo "  all checks passed"
 exit "$fail"
