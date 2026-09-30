@@ -18,3 +18,7 @@ jobs:
     uses: netresearch/skill-repo-skill/.github/workflows/tests.yml@main
     permissions:
       contents: read
+    with:
+      # Fail, not warn, if the tests/**/*.sh glob ever matches nothing while
+      # the skill ships scripts.
+      require_tests: true
