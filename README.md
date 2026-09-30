@@ -312,6 +312,57 @@ To improve this skill:
 ### Related Skills
 - [TYPO3 Docs Skill](https://github.com/netresearch/typo3-docs-skill) - For documentation contributions
 
+## Tests
+
+`tests/` holds one offline test file per script group. Each runs the shipped script as a user would, with stub `curl` and `ssh` commands first in `PATH`, a throw-away Git configuration and temporary directories, so no test reaches forge.typo3.org, git.typo3.org or review.typo3.org:
+
+- `tests/validate-commit-message.sh`: subject types including `[!!!]` breaking changes, the `Resolves:` and `Releases:` footers, the `EXT:` warning and the body line length.
+- `tests/create-commit-message.sh`: the generated subject and footers, a validator run over each generated message, and the `--output` confinement.
+- `tests/t3o-gitlab.sh`: argument parsing, the draft-prefix rule, the pipeline wait budget and the refusal of non-numeric ids.
+- `tests/forge-scripts.sh`: the request `create-forge-issue.sh` and `query-forge-metadata.sh` send, driven through a terminal with `script`.
+- `tests/verify-prerequisites.sh`: the checks against a configured and a misconfigured checkout.
+
+`setup-typo3-coredev.sh` has no test: it clones TYPO3 Core and starts DDEV.
+
+Run them from the repository root; they need `bash`, `python3`, `git`, `jq` and `script` (util-linux):
+
+```bash
+for t in tests/*.sh; do bash "$t" || echo "FAILED: $t"; done
+pre-commit run --all-files
+```
+
+Each check prints `ok <check>`, or `FAIL <check>` followed by what was expected and what was found, and a file exits 1 when one of its checks failed. `tests/forge-scripts.sh` uses the util-linux `script -qec`, which the BSD `script` on macOS does not accept. The pre-commit hooks in `.pre-commit-config.yaml` run the skill validator, the version-parity check, markdownlint, yamllint, actionlint, JSON and YAML syntax, ruff and ShellCheck.
+
+In CI, `tests.yml` (Skill Tests) runs every `tests/**/*.sh` on each pull request and push to `main`, marks a failing file with an error annotation, and fails when no test file runs. A change to a script comes with a test in `tests/` that fails without the change.
+
+## Dependencies
+
+- **Scripts:** the Python scripts use the standard library only. The shell scripts need `curl`, `jq`, `git` and `ssh`; `setup-typo3-coredev.sh` also needs DDEV and Docker. These are system tools the contributor installs: `verify-prerequisites.sh` checks Git, the Gerrit SSH connection, Composer, PHP and DDEV, `setup-typo3-coredev.sh` checks Git, DDEV and Docker, and the Forge scripts stop when `curl` or `jq` is missing.
+- **Composer:** `composer.json` requires `netresearch/composer-agent-skill-plugin` (constraint `*`), the Composer plugin for packages of type `ai-agent-skill`. No lock file is committed: the package is installed as a dependency of other projects, whose lock files pin it.
+- **Pre-commit hooks:** each hook repository in `.pre-commit-config.yaml` is pinned by `rev:`.
+- **CI:** the workflows call reusable workflows of `netresearch/skill-repo-skill`, `netresearch/.github` and `netresearch/typo3-ci-workflows` at `@main`; those pin their actions by commit SHA.
+- **Updates:** Renovate (`renovate.json`, preset `github>netresearch/renovate-config`) opens pull requests for new hook revisions; `auto-merge-deps.yml` merges dependency pull requests once the required checks pass. Composer Audit and dependency review check dependency changes on pull requests.
+- **Selection:** a new dependency is added only when a script or the tooling needs it, from its upstream source (Packagist, the tool's own repository), under a licence compatible with this repository's.
+
+## Governance and policies
+
+This repository follows the Netresearch organisation policies:
+
+- [Governance](https://github.com/netresearch/.github/blob/main/GOVERNANCE.md): ownership, roles, how decisions are made and disputes resolved.
+- [Roadmap](https://github.com/netresearch/.github/blob/main/ROADMAP.md): planned and explicitly excluded work for the coming year.
+- [Handling of dependency and code analysis findings](https://github.com/netresearch/.github/blob/main/SECURITY.md#handling-of-dependency-and-code-analysis-findings): thresholds, deadlines and the exception process for dependency (SCA) and static analysis (SAST) findings.
+- [Secret management](https://github.com/netresearch/.github/blob/main/SECURITY.md#secret-management): how CI and release credentials are stored, accessed and rotated.
+- [Access roster](https://github.com/netresearch/.github/blob/main/docs/access-roster.md): who holds administrative access to this repository and the organisation.
+
+The security assurance case for this skill and its scripts (threat model, trust boundaries, countermeasures and limits) is in [docs/SECURITY-ASSURANCE.md](docs/SECURITY-ASSURANCE.md).
+
+Checks that run on pull requests in this repository:
+
+- Every pull request: Skill Validation (`lint.yml`: skill structure, manifest sync, markdownlint, yamllint, actionlint, JSON syntax, ShellCheck, ruff, checkpoint schemas), Eval Validation (`eval-validate.yml`) and Skill Tests (`tests.yml`).
+- Pull requests to `main`: `security.yml` with Composer Audit, SAST (Opengrep, `--config auto --error --severity WARNING`), Betterleaks secret scanning, zizmor and dependency review (`fail-on-severity: high`); Harness Verification (`harness-verify.yml`); Template Drift (`check-template-drift.yml`); CodeQL analysis of Python and the GitHub Actions workflows (default setup) and the DCO sign-off check.
+- Required for merging into `main`: Skill Validation, Eval Validation, Composer Audit, SAST (Opengrep), Secret Scanning (Betterleaks), `Analyze (actions)`, `Analyze (python)` and DCO. GitHub secret scanning with push protection is enabled for the repository.
+- The only recorded static-analysis exception is the `nosemgrep` comment on the `urlopen` call in `t3o-gitlab.py`, explained in the assurance case.
+
 ## License
 
 This project uses split licensing:

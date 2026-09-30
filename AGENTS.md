@@ -49,6 +49,7 @@ No Makefile or npm scripts. Key scripts live in `skills/typo3-core-contributions
 - `python3 skills/typo3-core-contributions/scripts/validate-commit-message.py` — validate commit message format
 - `python3 skills/typo3-core-contributions/scripts/create-commit-message.py` — generate compliant commit messages
 - `python3 skills/typo3-core-contributions/scripts/t3o-gitlab.py` — git.typo3.org helper: access level, issues, merge requests, links, bot-wall probe
+- `for t in tests/*.sh; do bash "$t"; done` — offline tests for the scripts; CI runs them in Skill Tests (`tests.yml`)
 
 ## Rules
 
