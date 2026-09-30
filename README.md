@@ -108,6 +108,7 @@ composer require netresearch/typo3-core-contributions-skill
 ```
 
 Requires [netresearch/composer-agent-skill-plugin](https://github.com/netresearch/composer-agent-skill-plugin).
+
 ## Scope
 
 **This skill covers**: TYPO3 Core code contributions (PHP, JavaScript, CSS, tests)
@@ -124,20 +125,30 @@ Requires [netresearch/composer-agent-skill-plugin](https://github.com/netresearc
 ## Directory Structure
 
 ```
-typo3-core-contributions/
-├── SKILL.md                      # Main skill definition
-├── README.md                     # This file
+skills/typo3-core-contributions/
+├── SKILL.md                         # Main skill definition
 ├── references/
-│   ├── account-setup.md          # Prerequisites and account configuration
-│   ├── commit-message-format.md  # Commit message standards
-│   ├── ddev-setup-workflow.md    # DDEV environment setup
-│   ├── gerrit-workflow.md        # Complete Gerrit submission workflow
-│   └── troubleshooting.md        # Gerrit-specific failures and their fixes
-├── scripts/
-│   ├── setup-typo3-coredev.sh    # Automated environment setup
-│   └── verify-prerequisites.sh   # Prerequisites checker
-└── assets/
-    └── images/                   # Workflow diagrams and screenshots
+│   ├── account-setup.md             # Prerequisites and account configuration
+│   ├── commit-message-format.md     # Commit message standards
+│   ├── commit-msg-hook.md           # What the core commit-msg hook checks
+│   ├── ddev-setup-workflow.md       # DDEV environment setup
+│   ├── forge-api.md                 # Forge (Redmine) REST API
+│   ├── gerrit-review-patterns.md    # Review feedback patterns
+│   ├── gerrit-workflow.md           # Complete Gerrit submission workflow
+│   ├── modern-typo3-patterns.md     # Current TYPO3 coding patterns
+│   ├── proving-a-test.md            # Showing that a test catches the bug
+│   ├── t3o-gitlab-workflow.md       # t3o site repositories on git.typo3.org
+│   └── troubleshooting.md           # Gerrit-specific failures and their fixes
+└── scripts/
+    ├── create-commit-message.py     # Commit message generator
+    ├── create-forge-issue.sh        # Interactive Forge issue creation
+    ├── query-forge-metadata.sh      # Forge trackers and categories
+    ├── setup-typo3-coredev.sh       # Automated environment setup
+    ├── t3o-gitlab.py                # git.typo3.org helper for t3o sites
+    ├── validate-commit-message.py   # Commit message validator
+    └── verify-prerequisites.sh      # Prerequisites checker
+tests/                               # Offline tests for the scripts
+assets/commit-template.txt           # Git commit message template
 ```
 
 ## Key Workflows
@@ -216,9 +227,9 @@ Resolves: #12345
 Releases: main, 12.4
 ```
 
-**Types**: BUGFIX, FEATURE, TASK, DOCS, CLEANUP, SECURITY
+**Types**: BUGFIX, FEATURE, TASK, DOCS, SECURITY; a breaking change puts `[!!!]` in front, as in `[!!!][FEATURE]`
 
-**Required**: At least one `Resolves:` line
+**Required**: a `Resolves:` line and a `Releases:` line; `validate-commit-message.py` rejects a message without either
 
 **Optional**: `Related:` (but cannot be used alone)
 
@@ -306,6 +317,7 @@ This project uses split licensing:
 - **Content** (skill definitions, documentation, references): [CC-BY-SA-4.0](LICENSE-CC-BY-SA-4.0)
 
 See the individual license files for full terms.
+
 ## Author
 
 Created for use with Claude Code and TYPO3 Core contributions.
@@ -318,12 +330,6 @@ For issues or questions:
 - Open an issue in this repository
 - Reference official TYPO3 documentation
 - Test workflows on live Gerrit instance
-
----
-
-**Version**: 1.1.0
-**Last Updated**: 2025-10-27
-**Status**: Production-ready, validated on live submissions
 
 ---
 

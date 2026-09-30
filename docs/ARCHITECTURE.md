@@ -30,6 +30,7 @@ Shell and Python scripts that automate repetitive tasks:
 - **setup-typo3-coredev.sh** — bootstraps a TYPO3 Core development environment with DDEV
 - **validate-commit-message.py** / **create-commit-message.py** — enforce and generate compliant commit messages
 - **create-forge-issue.sh** / **query-forge-metadata.sh** — interact with the TYPO3 Forge API
+- **t3o-gitlab.py** — reads and writes issues, merge requests and pipelines on git.typo3.org for the t3o site repositories, and fingerprints responses from sites behind the Anubis bot wall
 
 ## Data Flow
 
