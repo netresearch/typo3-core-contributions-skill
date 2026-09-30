@@ -155,9 +155,9 @@ JSON_PAYLOAD=$(jq -n \
             tracker_id: $tracker,
             category_id: $category,
             priority_id: $priority,
-            custom_fields: [
+            custom_fields: ([
                 {id: 4, value: $typo3_version}
-            ] + (if $tags != "" then [{id: 3, value: $tags}] else [] end)
+            ] + (if $tags != "" then [{id: 3, value: $tags}] else [] end))
         }
     }')
 
