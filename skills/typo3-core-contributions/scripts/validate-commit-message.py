@@ -43,6 +43,7 @@ class CommitMessageValidator:
         """Run all validation checks"""
         self.check_subject_line()
         self.check_blank_line()
+        self.check_line_length()
         self.check_footer()
         self.check_change_id()
 

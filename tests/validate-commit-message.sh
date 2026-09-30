@@ -88,6 +88,29 @@ write nested.txt '[[!!!]FEATURE] Remove deprecated TypoScript syntax'
 python3 "$SCRIPT" --file "$WORK/nested.txt" >/dev/null 2>&1
 check "rejects the marker inside the type brackets" 1 "$?"
 
+# Body lines are wrapped at 72 characters, lines carrying a URL excepted. The
+# check existed but was never called. It warns, so the exit code stays 0.
+{
+    printf '[BUGFIX] Mark multi checkbox groups as a group\n\n'
+    printf 'This body line is deliberately longer than seventy-two characters in total.\n'
+    printf 'See https://forge.typo3.org/issues/110437 for the report, which is longer.\n\n'
+    printf 'Resolves: #110437\n'
+    printf 'Releases: main, 14.3\n'
+    printf 'Change-Id: I0123456789abcdef0123456789abcdef01234567\n'
+} > "$WORK/long.txt"
+out="$(python3 "$SCRIPT" --file "$WORK/long.txt" 2>&1)"
+check "a long body line is a warning, not an error" 0 "$?"
+case "$out" in
+    *"Line 3: Length"*) echo "  ok   warns about the long body line" ;;
+    *) echo "  FAIL no warning for the long body line"; fail=1 ;;
+esac
+case "$out" in
+    *"Line 4: Length"*) echo "  FAIL warns about a line carrying a URL"; fail=1 ;;
+    *) echo "  ok   exempts the line carrying a URL" ;;
+esac
+python3 "$SCRIPT" --strict --file "$WORK/long.txt" >/dev/null 2>&1
+check "--strict turns the long-line warning into a failure" 1 "$?"
+
 echo
 if [ "$fail" -eq 0 ]; then
     echo "All validate-commit-message tests passed"
