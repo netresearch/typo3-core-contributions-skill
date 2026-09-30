@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: Netresearch DTT GmbH
 # TYPO3 Core Development Environment Setup Script
 # Based on proven production workflow
 # Creates complete DDEV-based TYPO3 Core development environment

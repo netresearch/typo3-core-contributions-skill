@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+<!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
+
 # TYPO3 Commit Message Format Specification
 
 Complete specification for TYPO3 Core contribution commit messages with examples and validation rules.

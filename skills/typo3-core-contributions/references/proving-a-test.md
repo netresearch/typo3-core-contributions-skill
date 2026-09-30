@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+<!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
+
 # Proving a Test
 
 A test that passes with your fix in place proves nothing on its own. Reviewers ask for the other half, and they ask for it by name. From the review of change 92020:

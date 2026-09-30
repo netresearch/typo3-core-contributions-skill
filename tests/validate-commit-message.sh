@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: Netresearch DTT GmbH
 # tests/validate-commit-message.sh — exercises the commit message validator.
 #
 # The validator ships in every consumer of this skill and had no test: its own

@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: Netresearch DTT GmbH
 # TYPO3 Core Contribution Prerequisites Checker
 # Verifies accounts, git configuration, and development environment setup
 

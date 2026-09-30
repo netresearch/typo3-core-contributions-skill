@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+<!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
+
 # TYPO3 Core Development - Complete DDEV Setup Workflow
 
 Production-tested workflow for setting up a complete TYPO3 Core development environment with DDEV.

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: Netresearch DTT GmbH
+
 name: Skill Tests
 
 # Runs this repo's own test suite under tests/ via the skill-repo-skill

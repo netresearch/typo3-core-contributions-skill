@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: Netresearch DTT GmbH
 # tests/t3o-gitlab.sh — exercises t3o-gitlab.py without touching the network.
 #
 # The script grew merge-request updates and pipeline waiting because a session

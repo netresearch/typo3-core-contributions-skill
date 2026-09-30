@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: Netresearch DTT GmbH
 """
 TYPO3 Core Contribution Commit Message Generator
 Creates properly formatted commit messages following TYPO3 standards

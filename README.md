@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+<!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
+
 # TYPO3 Core Contributions Skill
 
 An AI skill for guiding contributions to TYPO3 Core through systematic workflows, automated quality checks, and best practices enforcement.

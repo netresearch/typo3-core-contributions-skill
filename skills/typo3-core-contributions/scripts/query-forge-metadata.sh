@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: Netresearch DTT GmbH
 # Query TYPO3 Forge project metadata via Redmine REST API
 #
 # Usage:

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: Netresearch DTT GmbH
 """
 TYPO3 Commit Message Validator
 Validates commit messages against TYPO3 contribution standards
