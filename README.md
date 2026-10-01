@@ -359,7 +359,8 @@ The security assurance case for this skill and its scripts (threat model, trust 
 Checks that run on pull requests in this repository:
 
 - Every pull request: Skill Validation (`lint.yml`: skill structure, manifest sync, markdownlint, yamllint, actionlint, JSON syntax, ShellCheck, ruff, checkpoint schemas), Eval Validation (`eval-validate.yml`) and Skill Tests (`tests.yml`).
-- Pull requests to `main`: `security.yml` with Composer Audit, SAST (Opengrep, `--config auto --error --severity WARNING`), Betterleaks secret scanning, zizmor and dependency review (`fail-on-severity: high`); Harness Verification (`harness-verify.yml`); Template Drift (`check-template-drift.yml`); CodeQL analysis of Python and the GitHub Actions workflows (default setup) and the DCO sign-off check.
+- Pull requests to `main`: `security.yml` with Composer Audit, SAST (Opengrep; findings handled under the [organisation's static analysis rule](https://github.com/netresearch/.github/blob/main/SECURITY.md#static-analysis-sast)), Betterleaks secret scanning, zizmor and dependency review (`fail-on-severity: high`); Harness Verification (`harness-verify.yml`); Template Drift (`check-template-drift.yml`); CodeQL analysis of Python and the GitHub Actions workflows (default setup) and the DCO sign-off check.
+- Also on every pull request: Labeler (`labeler.yml`), the dependency auto-merge job (`auto-merge-deps.yml`, skipped unless a dependency bot opened the pull request), SonarCloud code analysis, Copilot code review (a repository ruleset) and CodeRabbit review.
 - Required for merging into `main`: Skill Validation, Eval Validation, Composer Audit, SAST (Opengrep), Secret Scanning (Betterleaks), `Analyze (actions)`, `Analyze (python)` and DCO. GitHub secret scanning with push protection is enabled for the repository.
 - The only recorded static-analysis exception is the `nosemgrep` comment on the `urlopen` call in `t3o-gitlab.py`, explained in the assurance case.
 
