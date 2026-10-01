@@ -25,7 +25,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 HOST = "https://git.typo3.org"
 API = f"{HOST}/api/v4"
@@ -571,6 +571,65 @@ def cmd_pipeline_status(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def probe_pipeline(
+    args: argparse.Namespace, deadline: float, last_sha: str | None
+) -> tuple[bool, str | None, dict | None]:
+    """One poll of `pipeline wait`: (read, sha, pipeline).
+
+    `read` is False when the probe failed; the caller then keeps the state it
+    had. With --merge-request the pipeline is the one for `sha`, the commit
+    the MR points at now, or None while that commit has none.
+    """
+    try:
+        if args.id:
+            return True, None, pipeline_by_id(args.project, args.id, deadline, True)
+        sha, current, _ = mr_pipeline(args.project, args.merge_request, deadline, True)
+    except (TransientHTTPError, urllib.error.URLError, TimeoutError) as error:
+        # DNS, TLS, a dropped connection or a gateway error: keep the last
+        # state and poll again. call() ends the run on any other HTTP error,
+        # so without this the loop dies on a hiccup instead of waiting, which
+        # is what it is for.
+        reason = getattr(error, "reason", None) or error
+        print(f"  probe failed ({reason}), still waiting", file=sys.stderr)
+        return False, last_sha, None
+    if sha != last_sha:
+        moved = " (the merge request moved)" if last_sha else ""
+        missing = "" if current else " - no pipeline for it yet"
+        print(f"waiting on !{args.merge_request} sha={sha[:8]}{moved}{missing}")
+    return True, sha, current
+
+
+def report_finished_pipeline(project: str, pipeline: dict) -> None:
+    status, pipeline_id = pipeline["status"], pipeline["id"]
+    print(
+        f"pipeline {pipeline_id} {status} "
+        f"sha={str(pipeline.get('sha'))[:8]} {pipeline['web_url']}"
+    )
+    if status == "failed":
+        print_failed_jobs(project, pipeline_id)
+    # A canceled pipeline is not a passed one: a caller chaining on this must
+    # not read "canceled" as green.
+    if status in ("failed", "canceled"):
+        sys.exit(1)
+
+
+def wait_ran_out(timeout: int, pipeline: dict | None, sha: str | None) -> NoReturn:
+    if pipeline is not None:
+        sys.exit(
+            f"pipeline {pipeline['id']} still {pipeline['status']} after "
+            f"{timeout}s - the wait ran out, this is not a result."
+        )
+    if sha is None:
+        sys.exit(
+            f"nothing could be read within {timeout}s - "
+            "the wait ran out, this is not a result."
+        )
+    sys.exit(
+        f"no pipeline for sha={sha[:8]} appeared within {timeout}s - "
+        f"the wait ran out, this is not a result. {NO_PIPELINE_HINT}"
+    )
+
+
 def cmd_pipeline_wait(args: argparse.Namespace) -> None:
     """Poll until the pipeline reaches a terminal status.
 
@@ -586,71 +645,25 @@ def cmd_pipeline_wait(args: argparse.Namespace) -> None:
     """
     # Before the first request: a slow lookup spends the caller's budget too.
     deadline = time.monotonic() + args.timeout
-    project = args.project
     pipeline: dict | None = None
     sha: str | None = None
-
-    def poll() -> None:
-        nonlocal pipeline, sha
-        try:
-            if args.id:
-                pipeline = pipeline_by_id(project, args.id, deadline, True)
-                return
-            seen, current, _ = mr_pipeline(project, args.merge_request, deadline, True)
-        except (TransientHTTPError, urllib.error.URLError, TimeoutError) as error:
-            # DNS, TLS, a dropped connection or a gateway error: keep the last
-            # state and poll again. call() ends the run on any other HTTP
-            # error, so without this the loop dies on a hiccup instead of
-            # waiting, which is what it is for.
-            reason = getattr(error, "reason", None) or error
-            print(f"  probe failed ({reason}), still waiting", file=sys.stderr)
-            return
-        if seen != sha:
-            moved = " (the merge request moved)" if sha else ""
-            missing = "" if current else " - no pipeline for it yet"
-            print(f"waiting on !{args.merge_request} sha={seen[:8]}{moved}{missing}")
-            sha = seen
-        # Replaced even by None: once the MR moved, the old commit's pipeline
-        # is no longer an answer, whatever its status.
-        pipeline = current
-
-    poll()
     while True:
+        read, seen, current = probe_pipeline(args, deadline, sha)
+        if read:
+            # Replaced even by None: once the MR moved, the old commit's
+            # pipeline is no longer an answer, whatever its status.
+            sha, pipeline = seen, current
         if pipeline is not None and pipeline["status"] in TERMINAL_PIPELINE_STATUS:
-            status, pipeline_id = pipeline["status"], pipeline["id"]
-            print(
-                f"pipeline {pipeline_id} {status} "
-                f"sha={str(pipeline.get('sha'))[:8]} {pipeline['web_url']}"
-            )
-            if status == "failed":
-                print_failed_jobs(project, pipeline_id)
-            # A canceled pipeline is not a passed one: a caller chaining on
-            # this must not read "canceled" as green.
-            if status in ("failed", "canceled"):
-                sys.exit(1)
+            report_finished_pipeline(args.project, pipeline)
             return
-        if time.monotonic() >= deadline:
-            if pipeline is not None:
-                sys.exit(
-                    f"pipeline {pipeline['id']} still {pipeline['status']} after "
-                    f"{args.timeout}s - the wait ran out, this is not a result."
-                )
-            if sha is None:
-                sys.exit(
-                    f"nothing could be read within {args.timeout}s - "
-                    "the wait ran out, this is not a result."
-                )
-            sys.exit(
-                f"no pipeline for sha={sha[:8]} appeared within {args.timeout}s - "
-                f"the wait ran out, this is not a result. {NO_PIPELINE_HINT}"
-            )
         remaining = deadline - time.monotonic()
-        time.sleep(min(args.interval, max(remaining, 0)))
+        if remaining <= 0:
+            wait_ran_out(args.timeout, pipeline, sha)
+        time.sleep(min(args.interval, remaining))
         if time.monotonic() >= deadline:
-            # Back to the top, which reports the timeout. Issuing the request
-            # first would run past the deadline to say the same thing.
-            continue
-        poll()
+            # Issuing the request now would run past the deadline only to
+            # report the same timeout.
+            wait_ran_out(args.timeout, pipeline, sha)
 
 
 def cmd_link(args: argparse.Namespace) -> None:
