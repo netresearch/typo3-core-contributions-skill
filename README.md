@@ -327,7 +327,7 @@ To improve this skill:
 Run them from the repository root; they need `bash`, `python3`, `git`, `jq` and `script` (util-linux):
 
 ```bash
-for t in tests/*.sh; do bash "$t" || echo "FAILED: $t"; done
+rc=0; for t in tests/*.sh; do bash "$t" || { echo "FAILED: $t"; rc=1; }; done; [ "$rc" -eq 0 ]
 pre-commit run --all-files
 ```
 
@@ -337,7 +337,7 @@ In CI, `tests.yml` (Skill Tests) runs every `tests/**/*.sh` on each pull request
 
 ## Dependencies
 
-- **Scripts:** the Python scripts use the standard library only. The shell scripts need `curl`, `jq`, `git` and `ssh`; `setup-typo3-coredev.sh` also needs DDEV and Docker. These are system tools the contributor installs: `verify-prerequisites.sh` checks Git, the Gerrit SSH connection, Composer, PHP and DDEV, `setup-typo3-coredev.sh` checks Git, DDEV and Docker, and the Forge scripts stop when `curl` or `jq` is missing.
+- **Scripts:** the Python scripts use the standard library only. The shell scripts need `curl`, `jq`, `git` and `ssh`, and `verify-prerequisites.sh` and `setup-typo3-coredev.sh` also `timeout` from GNU coreutils (macOS has none; Homebrew's coreutils installs it as `gtimeout`, and its `libexec/gnubin` directory on `PATH` provides `timeout`); `setup-typo3-coredev.sh` also needs DDEV and Docker. These are system tools the contributor installs: `verify-prerequisites.sh` checks Git, the Gerrit SSH connection, Composer, PHP and DDEV, `setup-typo3-coredev.sh` checks Git, DDEV and Docker, and the Forge scripts stop when `curl` or `jq` is missing.
 - **Composer:** `composer.json` requires `netresearch/composer-agent-skill-plugin` (constraint `*`), the Composer plugin for packages of type `ai-agent-skill`. No lock file is committed: the package is installed as a dependency of other projects, whose lock files pin it.
 - **Pre-commit hooks:** each hook repository in `.pre-commit-config.yaml` is pinned by `rev:`.
 - **CI:** the workflows call reusable workflows of `netresearch/skill-repo-skill`, `netresearch/.github` and `netresearch/typo3-ci-workflows` at `@main`; those pin their actions by commit SHA.

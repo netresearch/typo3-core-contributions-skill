@@ -49,13 +49,13 @@ No Makefile or npm scripts. Key scripts live in `skills/typo3-core-contributions
 - `python3 skills/typo3-core-contributions/scripts/validate-commit-message.py` — validate commit message format
 - `python3 skills/typo3-core-contributions/scripts/create-commit-message.py` — generate compliant commit messages
 - `python3 skills/typo3-core-contributions/scripts/t3o-gitlab.py` — git.typo3.org helper: access level, issues, merge requests, links, bot-wall probe
-- `for t in tests/*.sh; do bash "$t"; done` — offline tests for the scripts; CI runs them in Skill Tests (`tests.yml`)
+- `rc=0; for t in tests/*.sh; do bash "$t" || rc=1; done; exit $rc` — offline tests for the scripts; CI runs them in Skill Tests (`tests.yml`)
 
 ## Rules
 
 0. **Route by host first** — `review.typo3.org` is Gerrit (Core), `forge.typo3.org` is Redmine (Core issues), `git.typo3.org/services/t3o-sites/**` is ordinary GitLab for the t3o **sites**. Only `git.typo3.org/typo3/CI/cms` belongs to the Core workflow
 1. **Gerrit, not GitHub PRs** — TYPO3 Core uses Gerrit (`review.typo3.org`) for code review. t3o site repositories use GitLab merge requests instead, against `develop`, never merged by their author
-2. **Commit message format** — must start with `[TYPE]` (BUGFIX, FEATURE, TASK, DOCS, SECURITY), with `[!!!]` in front for a breaking change,, include `Resolves: #<issue>` and `Releases:` lines
+2. **Commit message format** — must start with `[TYPE]` (BUGFIX, FEATURE, TASK, DOCS, SECURITY), with `[!!!]` in front for a breaking change, include `Resolves: #<issue>` and `Releases:` lines
 3. **WIP workflow** — submit as WIP first (`refs/for/main%wip`), mark ready only after CI passes
 4. **Preserve Change-Id** — always amend commits to keep the Gerrit Change-Id
 5. **Analyze before coding** — understand the issue deeply before writing any fix
