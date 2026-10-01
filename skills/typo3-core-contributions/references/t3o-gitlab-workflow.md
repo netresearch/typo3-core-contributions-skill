@@ -196,6 +196,27 @@ The binding rules:
 
 **Our own convention on top: label every merge request when it is opened** — one area label, one `Skill::` and one `Type::` label, plus `Process:: Review` once it leaves draft (see the label list below). The t3o workflow does not ask for labels and the maintainers' own MRs carry none; we label ours so they can be filtered and triaged. `mr create --label …` sets them in the create call and reads them back. One of ours went out ready for review without a single label (2026-09-30).
 
+### Security findings do not go through git.typo3.org
+
+Measured on `ter` (2026-09-30), none of the GitLab paths keeps a security
+finding private:
+
+- **The project is public**, so every branch and every merge request is
+  public the moment it is pushed or opened — including its diff.
+- **A confidential merge request needs a private fork**, and contributor
+  accounts cannot create one: they carry `projects_limit: 0` and
+  `can_create_project: false`.
+- **A confidential issue is possible, but not private.** It is visible to its
+  author, the instance admins and every project member with Reporter or
+  higher — 31 accounts on `ter`, bot accounts such as `renovate` among them.
+
+The channel for a security finding is the address in
+[`https://typo3.org/security.txt`](https://typo3.org/security.txt):
+`security@typo3.org`, with the PGP key the file names and
+`Preferred-Languages: en`. Read the file itself rather than a summary of it.
+The fix then goes in through a maintainer; do not push a branch, open a merge
+request or file an issue that describes the vulnerability.
+
 ### Stacking a merge request on another one
 
 When a change depends on one still in review, branch off that branch and target
