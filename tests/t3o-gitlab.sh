@@ -204,7 +204,8 @@ check "the redirect target never receives the token" "True" "$(echo "$out" | sed
 # and printed the proxy's HTML page when git.typo3.org answered 502. A fake
 # API replays that: first the plain stale case, then a longer sequence of an
 # old pipeline only, a 502, the new commit's pipeline running, a second push
-# moving the MR on, and finally the newest commit's pipeline green.
+# moving the MR on, and finally the newest commit's pipeline green. Last, a
+# push that lands between the two requests of one poll.
 # -u keeps stdout and stderr in order: the output is split per scenario.
 out="$(GIT_TYPO3_ORG_TOKEN=test-token python3 -u - "$SCRIPT" 2>&1 <<'PY'
 import http.server, importlib.util, json, sys, threading
@@ -214,7 +215,8 @@ spec.loader.exec_module(mod)
 A, B, C = "a" * 40, "b" * 40, "c" * 40
 def pipe(pid, sha, status):
     return {"id": pid, "sha": sha, "status": status, "web_url": f"https://x/{pid}"}
-# One entry per poll: the sha the MR points at, then its pipeline list.
+# One entry per poll: the sha the MR points at, then its pipeline list. A
+# poll reads the list first and the MR last, so the MR read ends the step.
 steps = [
     (B, [pipe(1, A, "success")]),
     (502, None),
@@ -223,14 +225,19 @@ steps = [
     (C, [pipe(3, C, "success"), pipe(2, B, "success"), pipe(1, A, "success")]),
 ]
 step = [0]
+# Set, it replaces `steps`: one world per request instead of per poll, the
+# last one repeated, so a push can fall between the list and the MR read.
+race = []
 class Api(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-        sha, pipelines = steps[min(step[0], len(steps) - 1)]
+        if race:
+            sha, pipelines = race.pop(0) if len(race) > 1 else race[0]
+        else:
+            sha, pipelines = steps[min(step[0], len(steps) - 1)]
         if sha == 502:
             step[0] += 1
             body, kind, code = b"<html><head><title>502 Bad Gateway</title></head></html>", "text/html", 502
         elif self.path.endswith("/pipelines"):
-            step[0] += 1
             body, kind, code = json.dumps(pipelines).encode(), "application/json", 200
         elif "/pipelines/" in self.path:
             # A single pipeline, looked up in the current list without
@@ -239,6 +246,7 @@ class Api(http.server.BaseHTTPRequestHandler):
             found = [p for p in pipelines if p["id"] == wanted]
             body, kind, code = json.dumps(found[0]).encode(), "application/json", 200
         else:
+            step[0] += 1
             body, kind, code = json.dumps({"sha": sha}).encode(), "application/json", 200
         self.send_response(code)
         self.send_header("Content-Type", kind)
@@ -274,8 +282,21 @@ run("EXIT", ["pipeline", "wait"])
 # `pipeline status` must not report the old green pipeline either.
 step[0] = 0
 run("STATUS", ["pipeline", "status"])
+# The push from A to B lands after the first request of the first poll. Read
+# MR-first, that poll pairs sha A with a list still holding A's green
+# pipeline 1 and reports it although the MR has moved on to B.
+race[:] = [
+    (A, [pipe(1, A, "success")]),
+    (B, [pipe(1, A, "success")]),
+    (B, [pipe(1, A, "success")]),
+    (B, [pipe(2, B, "success"), pipe(1, A, "success")]),
+]
+print("=== RACE")
+run("RACE", ["pipeline", "wait"])
 PY
 )"
+race_out="${out#*=== RACE}"
+out="${out%%=== RACE*}"
 stale="${out%%STALE *}"
 case "$stale" in
     *"pipeline 1 "*) echo "  FAIL pipeline wait reported the previous commit's green pipeline: $stale"; fail=1 ;;
@@ -310,6 +331,11 @@ esac
 case "$out" in
     *"No pipeline yet for sha=bbbbbbbb"*"STATUS 1"*) echo "  ok   pipeline status refuses an older commit's pipeline" ;;
     *) echo "  FAIL pipeline status reported an older commit's pipeline: $out"; fail=1 ;;
+esac
+case "$race_out" in
+    *"pipeline 1 "*) echo "  FAIL a push between two requests got the old commit's pipeline reported: $race_out"; fail=1 ;;
+    *"pipeline 2 success sha=bbbbbbbb"*"RACE 0"*) echo "  ok   a push between two requests of a poll is waited through" ;;
+    *) echo "  FAIL pipeline wait did not end on the pushed commit's pipeline: $race_out"; fail=1 ;;
 esac
 
 # An interval is seconds, and seconds are positive: -1 reached time.sleep(-1)

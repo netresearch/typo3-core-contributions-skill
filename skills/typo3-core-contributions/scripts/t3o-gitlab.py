@@ -504,19 +504,25 @@ def mr_pipeline(
     newest one is the previous commit's - often green. Matching on the sha the
     MR points at now is what tells "not created yet" apart from "done".
     """
+    # The list first, the MR second, so the sha is the last thing observed.
+    # In the other order a push between the two requests pairs the old sha
+    # with a list that still holds the old commit's finished pipeline, and
+    # that pipeline is returned as the state of a commit the MR left. This
+    # way round the same push leaves the new sha without a match - "not
+    # created yet" - and the next poll finds it.
     # Every call re-reads the budget: the lookup takes two requests, and the
     # first one may have spent what the second was going to use.
+    pipelines = call(
+        f"{mr_path(project, iid)}/pipelines",
+        timeout=time_left(deadline),
+        retry_transient=retry_transient,
+    )
     merge_request = call(
         mr_path(project, iid),
         timeout=time_left(deadline),
         retry_transient=retry_transient,
     )
     sha = str(merge_request["sha"])
-    pipelines = call(
-        f"{mr_path(project, iid)}/pipelines",
-        timeout=time_left(deadline),
-        retry_transient=retry_transient,
-    )
     pipelines = [p for p in pipelines if isinstance(p, dict)] if pipelines else []
     newest = max(pipelines, key=lambda p: int(p["id"]), default=None)
     current = max(

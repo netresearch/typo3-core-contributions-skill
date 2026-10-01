@@ -98,8 +98,10 @@ created a pipeline for it, the script keeps waiting rather than reporting the
 newest one it can find — right after a force-push that newest one is the
 previous commit's, usually green, and an earlier version of the script handed
 exactly that back as the result (ter, 2026-09-30). A push made during the wait
-moves the target with it. `pipeline status --merge-request` follows the same
-rule and exits `1` when no pipeline exists yet for the current sha. A `502`,
+moves the target with it. Each poll reads the pipeline list before the merge
+request, so a push that lands between the two requests leaves the new sha
+without a match instead of pairing the old sha with the old commit's finished
+pipeline. `pipeline status --merge-request` follows the same rule and exits `1` when no pipeline exists yet for the current sha. A `502`,
 `503` or `504` from the proxy in front of git.typo3.org is retried during a
 wait, reported as one line instead of the proxy's HTML page; outside a wait it
 ends the run with that one line. On `ter` the merge request pipelines are
