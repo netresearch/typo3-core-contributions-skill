@@ -440,6 +440,53 @@ directory its permissions back first:
 chmod u+rwx ter/public/fileadmin && rm -rf ter
 ```
 
+**`test:functional` needs a database and `mysqli`.** When the host PHP lacks
+`mysqli`, run the suite in a throwaway `php:8.4-cli` container against a
+`mariadb:10.11` one. Mount the worktree at the **same absolute path** inside
+the container, so every absolute path the suite meets is the same on both
+sides, and use `--network host` so `127.0.0.1:33306` is the database in both.
+After a `composer install` on the host, from the repository root:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+repo="$PWD"
+docker run -d --rm --name ter-test-db -p 127.0.0.1:33306:3306 \
+  -e MARIADB_ROOT_PASSWORD=root -e MARIADB_DATABASE=typo3_test mariadb:10.11
+trap 'docker stop ter-test-db >/dev/null' EXIT
+docker run --rm -i --network host -v "$repo:$repo" -w "$repo" \
+  -e typo3DatabaseHost=127.0.0.1 -e typo3DatabasePort=33306 \
+  -e typo3DatabaseUsername=root -e typo3DatabasePassword=root \
+  -e typo3DatabaseName=typo3_test -e TYPO3_PATH_WEB="$repo/public" \
+  php:8.4-cli sh -e <<'SH'
+apt-get update -qq && apt-get install -y -qq libzip-dev >/dev/null
+docker-php-ext-install zip mysqli pdo_mysql >/dev/null
+# wait through the driver the tests use, and fail if it never connects
+php <<'PHP'
+<?php
+for ($i = 0; $i < 30; $i++) {
+    try { new mysqli('127.0.0.1', 'root', 'root', 'typo3_test', 33306); exit(0); }
+    catch (mysqli_sql_exception $e) { $last = $e->getMessage(); sleep(2); }
+}
+fwrite(STDERR, "database never answered: $last\n");
+exit(1);
+PHP
+php -d memory_limit=512M vendor/bin/phpunit -c .gitlab-ci/Tests/phpunit-functional.xml
+SH
+```
+
+**Wait for a database through the driver the tests use.** The `test:functional`
+job used to wait for MariaDB with `mysqladmin ping --silent`. That ping never
+succeeded in CI — all 30 attempts, in every run — and because running out of
+attempts was not fatal, the tests started anyway and nothing looked wrong. The
+job now waits by connecting through `mysqli` from PHP and fails with the last
+connection error. A readiness wait should use the driver the tests use, and a
+wait whose failure is not fatal hides that it never worked.
+
+A local test of a ping-based wait proves nothing either: the MariaDB 11.8
+client in Debian 13 reports `rc=0` for `Access denied` on a passwordless
+ping, so the wait looks healthy against a server that refused it.
+
 Infection (`composer test:mutation`) validates the PHPUnit configuration it
 generates against `https://schema.phpunit.de/<version>/phpunit.xsd`, and
 `Typo3VersionServiceTest` fetches `https://get.typo3.org`. Where PHP cannot
