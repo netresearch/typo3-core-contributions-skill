@@ -199,6 +199,119 @@ PY
 check "an API redirect ends the call" "True" "$(echo "$out" | sed -n 1p)"
 check "the redirect target never receives the token" "True" "$(echo "$out" | sed -n 2p)"
 
+# `pipeline wait --merge-request` once reported the previous commit's green
+# pipeline right after a force-push, because the new one did not exist yet,
+# and printed the proxy's HTML page when git.typo3.org answered 502. A fake
+# API replays that: first the plain stale case, then a longer sequence of an
+# old pipeline only, a 502, the new commit's pipeline running, a second push
+# moving the MR on, and finally the newest commit's pipeline green.
+# -u keeps stdout and stderr in order: the output is split per scenario.
+out="$(GIT_TYPO3_ORG_TOKEN=test-token python3 -u - "$SCRIPT" 2>&1 <<'PY'
+import http.server, importlib.util, json, sys, threading
+spec = importlib.util.spec_from_file_location("t3o", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+A, B, C = "a" * 40, "b" * 40, "c" * 40
+def pipe(pid, sha, status):
+    return {"id": pid, "sha": sha, "status": status, "web_url": f"https://x/{pid}"}
+# One entry per poll: the sha the MR points at, then its pipeline list.
+steps = [
+    (B, [pipe(1, A, "success")]),
+    (502, None),
+    (B, [pipe(2, B, "running"), pipe(1, A, "success")]),
+    (C, [pipe(2, B, "success"), pipe(1, A, "success")]),
+    (C, [pipe(3, C, "success"), pipe(2, B, "success"), pipe(1, A, "success")]),
+]
+step = [0]
+class Api(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        sha, pipelines = steps[min(step[0], len(steps) - 1)]
+        if sha == 502:
+            step[0] += 1
+            body, kind, code = b"<html><head><title>502 Bad Gateway</title></head></html>", "text/html", 502
+        elif self.path.endswith("/pipelines"):
+            step[0] += 1
+            body, kind, code = json.dumps(pipelines).encode(), "application/json", 200
+        elif "/pipelines/" in self.path:
+            # A single pipeline, looked up in the current list without
+            # consuming a step: the previous script read it this way.
+            wanted = int(self.path.rsplit("/", 1)[1])
+            found = [p for p in pipelines if p["id"] == wanted]
+            body, kind, code = json.dumps(found[0]).encode(), "application/json", 200
+        else:
+            body, kind, code = json.dumps({"sha": sha}).encode(), "application/json", 200
+        self.send_response(code)
+        self.send_header("Content-Type", kind)
+        self.end_headers()
+        self.wfile.write(body)
+    def log_message(self, *args):
+        pass
+api = http.server.HTTPServer(("127.0.0.1", 0), Api)
+threading.Thread(target=api.serve_forever, daemon=True).start()
+mod.API = f"http://127.0.0.1:{api.server_port}/api/v4"
+mod.time.sleep = lambda seconds: None
+def run(label, command):
+    args = mod.build_parser().parse_args([*command, "a/b", "--merge-request", "5"])
+    try:
+        args.func(args)
+        code = 0
+    except SystemExit as stop:
+        # sys.exit("message") exits 1 with the message on stderr; show both.
+        if not isinstance(stop.code, int):
+            print(stop.code)
+        code = stop.code if isinstance(stop.code, int) else 1
+    print(f"{label} {code}")
+# The plain stale case first, without a 502 in the way: an old green
+# pipeline, then the new commit's, green as well. Reporting the first one
+# is the bug.
+stale_steps, steps = steps, [
+    (B, [pipe(1, A, "success")]),
+    (B, [pipe(2, B, "success"), pipe(1, A, "success")]),
+]
+run("STALE", ["pipeline", "wait"])
+steps, step[0] = stale_steps, 0
+run("EXIT", ["pipeline", "wait"])
+# `pipeline status` must not report the old green pipeline either.
+step[0] = 0
+run("STATUS", ["pipeline", "status"])
+PY
+)"
+stale="${out%%STALE *}"
+case "$stale" in
+    *"pipeline 1 "*) echo "  FAIL pipeline wait reported the previous commit's green pipeline: $stale"; fail=1 ;;
+    *"pipeline 2 success sha=bbbbbbbb"*) echo "  ok   pipeline wait skips the previous commit's green pipeline" ;;
+    *) echo "  FAIL pipeline wait did not reach the current commit's pipeline: $stale"; fail=1 ;;
+esac
+out="${out#*STALE }"
+case "$out" in
+    *"waiting on !5 sha=bbbbbbbb - no pipeline for it yet"*) echo "  ok   pipeline wait names the sha it waits on" ;;
+    *) echo "  FAIL pipeline wait did not name the sha: $out"; fail=1 ;;
+esac
+case "$out" in
+    *"pipeline 1 "*|*"pipeline 2 "*) echo "  FAIL pipeline wait reported a pipeline of an older commit: $out"; fail=1 ;;
+    *) echo "  ok   pipeline wait never reports an older commit's pipeline" ;;
+esac
+case "$out" in
+    *"sha=cccccccc (the merge request moved)"*) echo "  ok   pipeline wait follows a push made during the wait" ;;
+    *) echo "  FAIL pipeline wait did not follow the second push: $out"; fail=1 ;;
+esac
+case "$out" in
+    *"pipeline 3 success sha=cccccccc"*"EXIT 0"*) echo "  ok   pipeline wait reports the current commit's pipeline" ;;
+    *) echo "  FAIL pipeline wait did not end on pipeline 3: $out"; fail=1 ;;
+esac
+case "$out" in
+    *"probe failed (HTTP 502 (an HTML page"*"'502 Bad Gateway'"*) echo "  ok   a 502 is a retry with a one-line reason" ;;
+    *) echo "  FAIL the 502 was not retried with a one-line reason: $out"; fail=1 ;;
+esac
+case "$out" in
+    *"<html"*) echo "  FAIL the proxy's HTML reached the output: $out"; fail=1 ;;
+    *) echo "  ok   the proxy's HTML never reaches the output" ;;
+esac
+case "$out" in
+    *"No pipeline yet for sha=bbbbbbbb"*"STATUS 1"*) echo "  ok   pipeline status refuses an older commit's pipeline" ;;
+    *) echo "  FAIL pipeline status reported an older commit's pipeline: $out"; fail=1 ;;
+esac
+
 # An interval is seconds, and seconds are positive: -1 reached time.sleep(-1)
 # as a traceback, 0 made the poll a tight loop.
 for bad in "-1" "0" "x"; do

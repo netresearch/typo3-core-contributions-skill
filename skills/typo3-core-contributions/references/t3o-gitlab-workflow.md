@@ -91,6 +91,22 @@ hand-rolled curl: one session re-inlined `PRIVATE-TOKEN: $(cat ~/.secrets/…)`
 about sixty times for exactly these operations, and one of its hand-written
 `sleep` watchers was killed by the OOM killer mid-wait (2026-09-14).
 
+`pipeline wait --merge-request` waits for the pipeline whose `sha` equals the
+sha the merge request points at **now**, re-reading the merge request on every
+poll, and prints that sha (`waiting on !<iid> sha=<sha>`). Until GitLab has
+created a pipeline for it, the script keeps waiting rather than reporting the
+newest one it can find — right after a force-push that newest one is the
+previous commit's, usually green, and an earlier version of the script handed
+exactly that back as the result (ter, 2026-09-30). A push made during the wait
+moves the target with it. `pipeline status --merge-request` follows the same
+rule and exits `1` when no pipeline exists yet for the current sha. A `502`,
+`503` or `504` from the proxy in front of git.typo3.org is retried during a
+wait, reported as one line instead of the proxy's HTML page; outside a wait it
+ends the run with that one line. On `ter` the merge request pipelines are
+branch pipelines (`source: push`) whose `sha` is the head commit; a project
+running merged-results pipelines would carry the merge commit's sha there and
+never match.
+
 Mind what it still does **not** wrap: closing or reopening an MR
 (`state_event`), merging, and reading discussions. Whenever you do fall back to
 curl, read the field back afterwards — the PUT answers `200` either way.
