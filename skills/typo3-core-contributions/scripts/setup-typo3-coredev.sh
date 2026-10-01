@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: Netresearch DTT GmbH
 # TYPO3 Core Development Environment Setup Script
 # Based on proven production workflow
 # Creates complete DDEV-based TYPO3 Core development environment
@@ -81,51 +83,51 @@ gather_input() {
     print_header "Configuration"
 
     # Project name
-    read -p "Project name (e.g., t3coredev-14-php8-4): " PROJECT_NAME
+    read -r -p "Project name (e.g., t3coredev-14-php8-4): " PROJECT_NAME
     if [ -z "$PROJECT_NAME" ]; then
         PROJECT_NAME="t3coredev-14-php8-4"
         print_info "Using default: $PROJECT_NAME"
     fi
 
     # Git user name
-    read -p "Your name for Git commits: " GIT_NAME
+    read -r -p "Your name for Git commits: " GIT_NAME
     while [ -z "$GIT_NAME" ]; do
         print_error "Name is required"
-        read -p "Your name for Git commits: " GIT_NAME
+        read -r -p "Your name for Git commits: " GIT_NAME
     done
 
     # Git email
-    read -p "Your email for Git commits: " GIT_EMAIL
+    read -r -p "Your email for Git commits: " GIT_EMAIL
     while [ -z "$GIT_EMAIL" ]; do
         print_error "Email is required"
-        read -p "Your email for Git commits: " GIT_EMAIL
+        read -r -p "Your email for Git commits: " GIT_EMAIL
     done
 
     # Gerrit username
-    read -p "Your Gerrit username (review.typo3.org): " GERRIT_USER
+    read -r -p "Your Gerrit username (review.typo3.org): " GERRIT_USER
     while [ -z "$GERRIT_USER" ]; do
         print_error "Gerrit username is required"
-        read -p "Your Gerrit username: " GERRIT_USER
+        read -r -p "Your Gerrit username: " GERRIT_USER
     done
 
     # PHP version
-    read -p "PHP version (8.2, 8.3, 8.4) [default: 8.4]: " PHP_VERSION
+    read -r -p "PHP version (8.2, 8.3, 8.4) [default: 8.4]: " PHP_VERSION
     if [ -z "$PHP_VERSION" ]; then
         PHP_VERSION="8.4"
     fi
 
     # Timezone
-    read -p "Timezone [default: Europe/Vienna]: " TIMEZONE
+    read -r -p "Timezone [default: Europe/Vienna]: " TIMEZONE
     if [ -z "$TIMEZONE" ]; then
         TIMEZONE="Europe/Vienna"
     fi
 
     # Admin password
-    read -sp "TYPO3 admin password: " ADMIN_PASSWORD
+    read -r -sp "TYPO3 admin password: " ADMIN_PASSWORD
     echo
     while [ -z "$ADMIN_PASSWORD" ]; do
         print_error "Admin password is required"
-        read -sp "TYPO3 admin password: " ADMIN_PASSWORD
+        read -r -sp "TYPO3 admin password: " ADMIN_PASSWORD
         echo
     done
 
@@ -139,7 +141,7 @@ gather_input() {
     echo "  Timezone:       $TIMEZONE"
     echo
 
-    read -p "Proceed with setup? (y/n): " CONFIRM
+    read -r -p "Proceed with setup? (y/n): " CONFIRM
     if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
         print_info "Setup cancelled."
         exit 0
@@ -152,7 +154,7 @@ create_project_dir() {
 
     if [ -d "$PROJECT_NAME" ]; then
         print_error "Directory $PROJECT_NAME already exists!"
-        read -p "Delete and recreate? (y/n): " DELETE_CONFIRM
+        read -r -p "Delete and recreate? (y/n): " DELETE_CONFIRM
         if [[ "$DELETE_CONFIRM" =~ ^[Yy]$ ]]; then
             rm -rf "$PROJECT_NAME"
             print_success "Deleted existing directory"
@@ -213,12 +215,12 @@ configure_git() {
 
     # Test Gerrit connection
     print_step "Testing Gerrit SSH connection..."
-    if timeout 5 ssh -p 29418 -o StrictHostKeyChecking=no -o BatchMode=yes "${GERRIT_USER}@review.typo3.org" gerrit version &>/dev/null; then
+    if timeout 5 ssh -p 29418 -o StrictHostKeyChecking=accept-new -o BatchMode=yes "${GERRIT_USER}@review.typo3.org" gerrit version &>/dev/null; then
         print_success "Gerrit connection successful"
     else
         print_error "Cannot connect to Gerrit. Please verify your SSH keys are configured."
         print_info "Continue anyway? SSH key might need configuration."
-        read -p "Continue? (y/n): " CONTINUE
+        read -r -p "Continue? (y/n): " CONTINUE
         if [[ ! "$CONTINUE" =~ ^[Yy]$ ]]; then
             exit 1
         fi
@@ -351,7 +353,7 @@ setup_backend_groups() {
 generate_test_data() {
     print_header "Generating Test Data"
 
-    read -p "Generate styleguide test data? (y/n): " GENERATE_DATA
+    read -r -p "Generate styleguide test data? (y/n): " GENERATE_DATA
     if [[ "$GENERATE_DATA" =~ ^[Yy]$ ]]; then
         print_step "Generating TCA examples..."
         ddev typo3 styleguide:generate --create -- tca
@@ -394,7 +396,7 @@ finalize() {
     echo "  ddev logs -f          - Follow logs"
     echo
 
-    read -p "Open TYPO3 backend now? (y/n): " OPEN_BACKEND
+    read -r -p "Open TYPO3 backend now? (y/n): " OPEN_BACKEND
     if [[ "$OPEN_BACKEND" =~ ^[Yy]$ ]]; then
         ddev launch /typo3
     fi

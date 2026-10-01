@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+<!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
+
 # TYPO3 Gerrit Review Patterns - Real-World Insights
 
 Based on analysis of actual merged patches from review.typo3.org, this document captures common review patterns, expectations, and best practices.

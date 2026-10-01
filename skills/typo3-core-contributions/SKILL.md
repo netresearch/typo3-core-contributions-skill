@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: CC-BY-SA-4.0
+# SPDX-FileCopyrightText: Netresearch DTT GmbH
 name: typo3-core-contributions
 description: "Use when contributing to TYPO3 Core — Forge issues, Gerrit patches, cherry-picks, CI debugging — or when working on **git.typo3.org**, the t3o site GitLab (`services/t3o-sites/**`: extensions.typo3.org/ter, common/t3olayout, anubis): merge requests, issues, work items, labels, pipelines. Core `main` is v15-in-progress (PHP 8.4/8.5); v14.3 LTS fixes land on branch `14.3` via cherry-pick. Triggers on: forge.typo3.org, review.typo3.org, git.typo3.org, t3o-sites, core patch, Gerrit review, TYPO3 Core contribution, TER website, t3olayout."
 ---

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: Netresearch DTT GmbH
 # tests/t3o-gitlab.sh — exercises t3o-gitlab.py without touching the network.
 #
 # The script grew merge-request updates and pipeline waiting because a session
@@ -99,6 +101,45 @@ check "time_left is unbounded without a deadline" "True" "$(echo "$out" | sed -n
 check "time_left reports what is left of the budget" "5" "$(echo "$out" | sed -n 5p)"
 check "time_left refuses a request past the deadline" "True" "$(echo "$out" | sed -n 6p)"
 
+# A redirect from the API must not carry the token to the host it names:
+# urllib copies every request header to the redirect target.
+out="$(GIT_TYPO3_ORG_TOKEN=test-token python3 - "$SCRIPT" <<'PY'
+import http.server, importlib.util, sys, threading
+spec = importlib.util.spec_from_file_location("t3o", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+seen = []
+class Other(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        seen.append(self.headers.get("PRIVATE-TOKEN"))
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"{}")
+    def log_message(self, *args):
+        pass
+other = http.server.HTTPServer(("127.0.0.1", 0), Other)
+class Api(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(302)
+        self.send_header("Location", f"http://127.0.0.1:{other.server_port}/x")
+        self.end_headers()
+    def log_message(self, *args):
+        pass
+api = http.server.HTTPServer(("127.0.0.1", 0), Api)
+for server in (other, api):
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+mod.API = f"http://127.0.0.1:{api.server_port}/api/v4"
+try:
+    mod.call("/user", timeout=5)
+    print("followed")
+except SystemExit as stop:
+    print("HTTP 302" in str(stop))
+print(seen == [])
+PY
+)"
+check "an API redirect ends the call" "True" "$(echo "$out" | sed -n 1p)"
+check "the redirect target never receives the token" "True" "$(echo "$out" | sed -n 2p)"
+
 # An interval is seconds, and seconds are positive: -1 reached time.sleep(-1)
 # as a traceback, 0 made the poll a tight loop.
 for bad in "-1" "0" "x"; do
@@ -117,6 +158,29 @@ for bad in "²" "١٢٣" "1/../2" "" "-1"; do
         *) echo "  FAIL mr show on iid '$bad' did not report it: $out"; fail=1 ;;
     esac
 done
+
+# `link` builds two paths from iids, and every other subcommand passes its ids
+# through numeric(). HOME points at an empty directory so that no token file
+# is found: a check that got as far as a request would stop at "No token"
+# instead, and fail the assertion rather than reach git.typo3.org.
+empty_home="$(mktemp -d)"
+for bad in "²" "1/../2" "-1"; do
+    out="$(env -u GIT_TYPO3_ORG_TOKEN HOME="$empty_home" python3 "$SCRIPT" \
+        link a/b "$bad" --to c/d#3 2>&1)"
+    case "$out" in
+        *"Not a numeric"*) echo "  ok   link refuses iid '$bad' with a message" ;;
+        *) echo "  FAIL link on iid '$bad' did not report it: $out"; fail=1 ;;
+    esac
+done
+for bad in "c/d#²" "c/d#١٢٣" "c/d#" "#3"; do
+    out="$(env -u GIT_TYPO3_ORG_TOKEN HOME="$empty_home" python3 "$SCRIPT" \
+        link a/b 1 --to "$bad" 2>&1)"
+    case "$out" in
+        *"--to must look like"*) echo "  ok   link refuses --to '$bad' with a message" ;;
+        *) echo "  FAIL link on --to '$bad' did not report it: $out"; fail=1 ;;
+    esac
+done
+rm -rf "$empty_home"
 
 [[ "$fail" -eq 0 ]] && echo "  all checks passed"
 exit "$fail"

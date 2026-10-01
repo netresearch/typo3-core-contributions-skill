@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+<!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
+
 # TYPO3 Contribution Troubleshooting Guide
 
 Failures specific to contributing to TYPO3 Core through Gerrit. Generic Git,

@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+<!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
+
 # TYPO3 Gerrit Workflow Guide
 
 Comprehensive guide for working with Gerrit code review system in TYPO3 Core contributions.

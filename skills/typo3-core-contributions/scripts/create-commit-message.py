@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: Netresearch DTT GmbH
 """
 TYPO3 Core Contribution Commit Message Generator
 Creates properly formatted commit messages following TYPO3 standards
@@ -176,8 +178,11 @@ Examples:
         description = wrap_text(description)
 
     # Build commit message
-    type_prefix = f"{BREAKING_CHANGE_PREFIX}{args.type}" if args.breaking else args.type
-    message = f"[{type_prefix}] {subject}\n\n"
+    # A breaking change is "[!!!][FEATURE] ...": the marker precedes the type.
+    type_prefix = f"[{args.type}]"
+    if args.breaking:
+        type_prefix = f"{BREAKING_CHANGE_PREFIX}{type_prefix}"
+    message = f"{type_prefix} {subject}\n\n"
 
     if description:
         message += f"{description}\n\n"

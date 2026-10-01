@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+<!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
+
 # TYPO3 Core Contribution Account Setup Guide
 
 Complete guide for setting up all required accounts for TYPO3 Core contributions.

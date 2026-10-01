@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+<!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
+
 # Modern TYPO3 Core Patterns
 
 Architectural patterns and best practices for TYPO3 Core contributions in v13+.

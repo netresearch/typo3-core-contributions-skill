@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+<!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
+
 # Forge REST API Documentation
 
 Complete guide to using the TYPO3 Forge (Redmine) REST API for programmatic issue management.

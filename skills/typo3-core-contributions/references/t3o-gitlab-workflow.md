@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+<!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
+
 # git.typo3.org — GitLab workflow for t3o sites
 
 **When to load:** any work against `git.typo3.org` that is not reading Core CI

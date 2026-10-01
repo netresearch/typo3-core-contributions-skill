@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+<!-- SPDX-FileCopyrightText: Netresearch DTT GmbH -->
+
 # TYPO3 Commit Message Hook
 
 Deep dive into the `Build/git-hooks/commit-msg` hook: validation rules, error messages, and troubleshooting.

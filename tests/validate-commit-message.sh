@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: Netresearch DTT GmbH
 # tests/validate-commit-message.sh — exercises the commit message validator.
 #
 # The validator ships in every consumer of this skill and had no test: its own
@@ -74,6 +76,45 @@ write norel.txt '[BUGFIX] Mark multi checkbox groups as a group'
 sed -i '/^Releases:/d' "$WORK/norel.txt"
 python3 "$SCRIPT" --file "$WORK/norel.txt" >/dev/null 2>&1
 check "rejects a missing Releases footer" 1 "$?"
+
+# A breaking change is written `[!!!][TYPE]` (commit-message-format.md). The
+# type pattern once expected the marker inside the brackets and rejected every
+# breaking change.
+write breaking.txt '[!!!][FEATURE] Remove deprecated TypoScript syntax'
+python3 "$SCRIPT" --file "$WORK/breaking.txt" >/dev/null 2>&1
+check "accepts a [!!!][TYPE] breaking change" 0 "$?"
+write breakingbug.txt '[!!!][BUGFIX] Remove deprecated TypoScript syntax'
+python3 "$SCRIPT" --file "$WORK/breakingbug.txt" 2>&1 | grep -q "unusual for BUGFIX"
+check "warns about a breaking BUGFIX" 0 "$?"
+write nested.txt '[[!!!]FEATURE] Remove deprecated TypoScript syntax'
+python3 "$SCRIPT" --file "$WORK/nested.txt" >/dev/null 2>&1
+check "rejects the marker inside the type brackets" 1 "$?"
+write glued.txt '[!!!][FEATURE]Remove deprecated TypoScript syntax'
+python3 "$SCRIPT" --file "$WORK/glued.txt" >/dev/null 2>&1
+check "rejects a subject glued to the type" 1 "$?"
+
+# Body lines are wrapped at 72 characters, lines carrying a URL excepted. The
+# check existed but was never called. It warns, so the exit code stays 0.
+{
+    printf '[BUGFIX] Mark multi checkbox groups as a group\n\n'
+    printf 'This body line is deliberately longer than seventy-two characters in total.\n'
+    printf 'See https://forge.typo3.org/issues/110437 for the report, which is longer.\n\n'
+    printf 'Resolves: #110437\n'
+    printf 'Releases: main, 14.3\n'
+    printf 'Change-Id: I0123456789abcdef0123456789abcdef01234567\n'
+} > "$WORK/long.txt"
+out="$(python3 "$SCRIPT" --file "$WORK/long.txt" 2>&1)"
+check "a long body line is a warning, not an error" 0 "$?"
+case "$out" in
+    *"Line 3: Length"*) echo "  ok   warns about the long body line" ;;
+    *) echo "  FAIL no warning for the long body line"; fail=1 ;;
+esac
+case "$out" in
+    *"Line 4: Length"*) echo "  FAIL warns about a line carrying a URL"; fail=1 ;;
+    *) echo "  ok   exempts the line carrying a URL" ;;
+esac
+python3 "$SCRIPT" --strict --file "$WORK/long.txt" >/dev/null 2>&1
+check "--strict turns the long-line warning into a failure" 1 "$?"
 
 echo
 if [ "$fail" -eq 0 ]; then

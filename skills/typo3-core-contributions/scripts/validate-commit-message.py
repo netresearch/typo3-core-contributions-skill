@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: Netresearch DTT GmbH
 """
 TYPO3 Commit Message Validator
 Validates commit messages against TYPO3 contribution standards
@@ -43,6 +45,7 @@ class CommitMessageValidator:
         """Run all validation checks"""
         self.check_subject_line()
         self.check_blank_line()
+        self.check_line_length()
         self.check_footer()
         self.check_change_id()
 
@@ -56,8 +59,9 @@ class CommitMessageValidator:
 
         subject = self.lines[0]
 
-        # Check for commit type
-        type_pattern = r"^\[(?:\[!!!\])?(BUGFIX|FEATURE|TASK|DOCS|SECURITY)\]"
+        # Check for commit type; a breaking change puts [!!!] in front of it,
+        # as in "[!!!][FEATURE] Remove ..." (references/commit-message-format.md)
+        type_pattern = r"^(?:\[!!!\])?\[(BUGFIX|FEATURE|TASK|DOCS|SECURITY)\]"
         match = re.match(type_pattern, subject)
 
         if not match:
@@ -67,6 +71,10 @@ class CommitMessageValidator:
             return
 
         commit_type = match.group(1)
+
+        # "[TYPE] Subject": the type is followed by a space, not glued to it
+        if not subject[match.end() :].startswith(" "):
+            self.errors.append("Put a space between the commit type and the subject")
 
         # Check for breaking change prefix
         if subject.startswith("[!!!]") and commit_type == "BUGFIX":
