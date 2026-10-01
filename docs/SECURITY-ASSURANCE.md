@@ -13,10 +13,10 @@ This document states what a user can expect from this repository in terms of sec
 | Helper scripts | `skills/typo3-core-contributions/scripts/*.py`, `skills/typo3-core-contributions/scripts/*.sh` | On the contributor's machine, started by the contributor or by the agent, with the contributor's user rights and credentials. |
 | Commit message template | `assets/commit-template.txt` | Installed by the contributor as a Git commit template; plain text. |
 | Package metadata | `composer.json`, `plugin.json`, `.claude-plugin/plugin.json` | Read by Composer and by Claude Code when the skill is installed. |
-| Repository tooling | `.github/workflows/*.yml`, `tests/*.sh`, `Build/`, `.pre-commit-config.yaml`, `evals/evals.json` | In this repository's CI and on contributors' machines. |
-| Harness check | the root `scripts/verify-harness.sh` | On contributors' machines; CI only lints it with ShellCheck. |
+| Repository tooling | `.github/workflows/*.yml`, `tests/*.sh`, `evals/evals.json` | In this repository's CI and on contributors' machines. |
+| Local tooling | the root `scripts/verify-harness.sh`, `Build/` (pre-push hook and plugin-version check), `.pre-commit-config.yaml` | On contributors' machines; CI only lints the shell scripts with ShellCheck and runs its own copies of the linters. |
 
-The scripts talk to three services of the TYPO3 project: `forge.typo3.org` (Redmine, `create-forge-issue.sh`, `query-forge-metadata.sh`), `git.typo3.org` (GitLab, `t3o-gitlab.py`) and `review.typo3.org` (Gerrit SSH, `verify-prerequisites.sh`, `setup-typo3-coredev.sh`). The repository runs no server and stores no data; the scripts keep no state beyond the files and Git configuration they are asked to write.
+The scripts talk to three services of the TYPO3 project: `forge.typo3.org` (Redmine, `create-forge-issue.sh`, `query-forge-metadata.sh`), `git.typo3.org` (GitLab, `t3o-gitlab.py`) and `review.typo3.org` (Gerrit SSH, `verify-prerequisites.sh`, `setup-typo3-coredev.sh`). `setup-typo3-coredev.sh` also clones TYPO3 Core from GitHub and runs `composer install` in DDEV, which downloads packages from Packagist. The repository runs no server and stores no data; the scripts keep no state beyond the files and Git configuration they are asked to write.
 
 In the tables below, `scripts/<name>` stands for `skills/typo3-core-contributions/scripts/<name>`.
 
@@ -67,7 +67,7 @@ The one recorded static-analysis exception is `# nosemgrep: dynamic-urllib-use-d
 - **Complete mediation:** each script has one place where a credential leaves the machine (`call()` in `t3o-gitlab.py`, the single `curl` call in each Forge script), so the checks sit in one place.
 - **Input validation at the boundary:** ids are converted to integers and URL schemes, paths and output locations are checked before they are used, whether they come from an argument or from a response.
 - **Fail-safe defaults:** merge requests start as drafts, issue creation and directory deletion ask first, a cancelled or failed pipeline makes `pipeline status` and `pipeline wait` exit non-zero, and an expired wait says it is not a result.
-- **Economy of mechanism:** the Python scripts use the standard library only; the shell scripts need `curl`, `jq`, `git` and `ssh`.
+- **Economy of mechanism:** the Python scripts use the standard library only; the shell scripts need `curl`, `jq`, `git`, `ssh` and `timeout`.
 - **Least privilege in CI:** every workflow sets `permissions: {}` and grants each job only what its reusable needs; read-only checks run with `contents: read`.
 
 ## Dynamic analysis
