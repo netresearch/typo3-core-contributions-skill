@@ -324,7 +324,7 @@ To improve this skill:
 
 `setup-typo3-coredev.sh` has no test: it clones TYPO3 Core and starts DDEV.
 
-Run them from the repository root; they need `bash`, `python3`, `git`, `jq` and `script` (util-linux):
+Run them from the repository root; they need `bash`, `python3`, `git`, `jq`, `timeout` (GNU coreutils) and `script` (util-linux):
 
 ```bash
 rc=0; for t in tests/*.sh; do bash "$t" || { echo "FAILED: $t"; rc=1; }; done; [ "$rc" -eq 0 ]
