@@ -91,6 +91,24 @@ hand-rolled curl: one session re-inlined `PRIVATE-TOKEN: $(cat ~/.secrets/…)`
 about sixty times for exactly these operations, and one of its hand-written
 `sleep` watchers was killed by the OOM killer mid-wait (2026-09-14).
 
+`pipeline wait --merge-request` waits for the pipeline whose `sha` equals the
+sha the merge request points at **now**, re-reading the merge request on every
+poll, and prints that sha (`waiting on !<iid> sha=<sha>`). Until GitLab has
+created a pipeline for it, the script keeps waiting rather than reporting the
+newest one it can find — right after a force-push that newest one is the
+previous commit's, usually green, and an earlier version of the script handed
+exactly that back as the result (ter, 2026-09-30). A push made during the wait
+moves the target with it. Each poll reads the pipeline list before the merge
+request, so a push that lands between the two requests leaves the new sha
+without a match instead of pairing the old sha with the old commit's finished
+pipeline. `pipeline status --merge-request` follows the same rule and exits `1` when no pipeline exists yet for the current sha. A `502`,
+`503` or `504` from the proxy in front of git.typo3.org is retried during a
+wait, reported as one line instead of the proxy's HTML page; outside a wait it
+ends the run with that one line. On `ter` the merge request pipelines are
+branch pipelines (`source: push`) whose `sha` is the head commit; a project
+running merged-results pipelines would carry the merge commit's sha there and
+never match.
+
 Mind what it still does **not** wrap: closing or reopening an MR
 (`state_event`), merging, and reading discussions. Whenever you do fall back to
 curl, read the field back afterwards — the PUT answers `200` either way.
@@ -175,10 +193,31 @@ The binding rules:
 - **Branch naming** is documented as `feature/<issue-number>-<description>` and `hotfix/<description>`. Repo practice also uses `task/` and `bugfix/` prefixes; keep the issue number either way.
 - **The MR description must state the changes *and the testing done*.** An MR without a testing section is incomplete by their rules.
 - **Commit subjects use the Core prefixes** — `[BUGFIX]`, `[TASK]`, `[FEATURE]` — so `validate-commit-message.py` still applies, minus the Gerrit-only `Change-Id`. Use `Relates: #<iid>` for the site issue.
-- **Maintainers merge with review threads still open.** Nothing in `ter` blocks a merge on unresolved discussions, and a merge can land while a review is being written. Read the merge request's `state` again immediately before posting review comments — a check of `sha` and `diff_refs` alone does not tell you. (`!911` was merged at 14:31 UTC; three review threads arrived at 14:52 and were never read.)
+- **Maintainers merge with review threads still open.** Nothing in `ter` blocks a merge on unresolved discussions, and a merge can land while a review is being written. Read the merge request's `state` again immediately before posting review comments — a check of `sha` and `diff_refs` alone does not tell you. (`!911` was merged at 14:31 UTC; three review threads arrived at 14:52 and were never read.) The same goes for pushing a fixup and for updating the description: a maintainer merged two merge requests while a third review round was running on them (2026-09-30), the fixup push then failed with `stale info` because the merge had deleted the branch, and the leftovers had to go into a follow-up merge request.
 - **Findings from a review go into the review, never into new issues.** When the merge request is already merged, the review has nowhere to land: turn the findings into a follow-up merge request that fixes them, target `develop`, and link the original threads from its description. The only exception is the case above where you cannot push and forking is refused: then no follow-up merge request can exist, and the issue with a ready-to-apply diff is the fallback.
 
 **Our own convention on top: label every merge request when it is opened** — one area label, one `Skill::` and one `Type::` label, plus `Process:: Review` once it leaves draft (see the label list below). The t3o workflow does not ask for labels and the maintainers' own MRs carry none; we label ours so they can be filtered and triaged. `mr create --label …` sets them in the create call and reads them back. One of ours went out ready for review without a single label (2026-09-30).
+
+### Security findings do not go through git.typo3.org
+
+Measured on `ter` (2026-09-30), none of the GitLab paths keeps a security
+finding private:
+
+- **The project is public**, so every branch and every merge request is
+  public the moment it is pushed or opened — including its diff.
+- **A confidential merge request needs a private fork**, and contributor
+  accounts cannot create one: they carry `projects_limit: 0` and
+  `can_create_project: false`.
+- **A confidential issue is possible, but not private.** It is visible to its
+  author, the instance admins and every project member with Reporter or
+  higher — 31 accounts on `ter`, bot accounts such as `renovate` among them.
+
+The channel for a security finding is the address in
+[`https://typo3.org/security.txt`](https://typo3.org/security.txt):
+`security@typo3.org`, with the PGP key the file names and
+`Preferred-Languages: en`. Read the file itself rather than a summary of it.
+The fix then goes in through a maintainer; do not push a branch, open a merge
+request or file an issue that describes the vulnerability.
 
 ### Stacking a merge request on another one
 
@@ -402,6 +441,53 @@ directory its permissions back first:
 ```bash
 chmod u+rwx ter/public/fileadmin && rm -rf ter
 ```
+
+**`test:functional` needs a database and `mysqli`.** When the host PHP lacks
+`mysqli`, run the suite in a throwaway `php:8.4-cli` container against a
+`mariadb:10.11` one. Mount the worktree at the **same absolute path** inside
+the container, so every absolute path the suite meets is the same on both
+sides, and use `--network host` so `127.0.0.1:33306` is the database in both.
+After a `composer install` on the host, from the repository root:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+repo="$PWD"
+docker run -d --rm --name ter-test-db -p 127.0.0.1:33306:3306 \
+  -e MARIADB_ROOT_PASSWORD=root -e MARIADB_DATABASE=typo3_test mariadb:10.11
+trap 'docker stop ter-test-db >/dev/null' EXIT
+docker run --rm -i --network host -v "$repo:$repo" -w "$repo" \
+  -e typo3DatabaseHost=127.0.0.1 -e typo3DatabasePort=33306 \
+  -e typo3DatabaseUsername=root -e typo3DatabasePassword=root \
+  -e typo3DatabaseName=typo3_test -e TYPO3_PATH_WEB="$repo/public" \
+  php:8.4-cli sh -e <<'SH'
+apt-get update -qq && apt-get install -y -qq libzip-dev >/dev/null
+docker-php-ext-install zip mysqli pdo_mysql >/dev/null
+# wait through the driver the tests use, and fail if it never connects
+php <<'PHP'
+<?php
+for ($i = 0; $i < 30; $i++) {
+    try { new mysqli('127.0.0.1', 'root', 'root', 'typo3_test', 33306); exit(0); }
+    catch (mysqli_sql_exception $e) { $last = $e->getMessage(); sleep(2); }
+}
+fwrite(STDERR, "database never answered: $last\n");
+exit(1);
+PHP
+php -d memory_limit=512M vendor/bin/phpunit -c .gitlab-ci/Tests/phpunit-functional.xml
+SH
+```
+
+**Wait for a database through the driver the tests use.** The `test:functional`
+job used to wait for MariaDB with `mysqladmin ping --silent`. That ping never
+succeeded in CI — all 30 attempts, in every run — and because running out of
+attempts was not fatal, the tests started anyway and nothing looked wrong. The
+job now waits by connecting through `mysqli` from PHP and fails with the last
+connection error. A readiness wait should use the driver the tests use, and a
+wait whose failure is not fatal hides that it never worked.
+
+A local test of a ping-based wait proves nothing either: the MariaDB 11.8
+client in Debian 13 reports `rc=0` for `Access denied` on a passwordless
+ping, so the wait looks healthy against a server that refused it.
 
 Infection (`composer test:mutation`) validates the PHPUnit configuration it
 generates against `https://schema.phpunit.de/<version>/phpunit.xsd`, and

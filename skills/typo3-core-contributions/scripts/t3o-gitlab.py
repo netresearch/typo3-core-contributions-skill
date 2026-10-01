@@ -25,7 +25,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 HOST = "https://git.typo3.org"
 API = f"{HOST}/api/v4"
@@ -124,12 +124,50 @@ def open_checked(
     )
 
 
+# What the proxy in front of git.typo3.org answers while GitLab restarts or is
+# overloaded. They say nothing about the request, so a wait retries them.
+TRANSIENT_HTTP = (502, 503, 504)
+
+
+class TransientHTTPError(Exception):
+    """A gateway error a caller that polls should retry, not die on."""
+
+
+def html_title(text: str) -> str:
+    lowered = text.lower()
+    start = lowered.find("<title>")
+    if start == -1:
+        return ""
+    return text[start + 7 : lowered.find("</title>", start)].strip()
+
+
+def error_detail(error: urllib.error.HTTPError) -> str:
+    """The body of an error response, unless it is a proxy's HTML page.
+
+    A 502 from the proxy is a full HTML document; printed verbatim it buries
+    the one fact that matters - the status - under markup.
+    """
+    text = error.read().decode(errors="replace")
+    content_type = (
+        error.headers.get("Content-Type", "") if error.headers else ""
+    ) or ""
+    if "html" in content_type.lower() or text.lstrip().startswith("<"):
+        title = html_title(text)
+        named = f", title {title[:80]!r}" if title else ""
+        return f"(an HTML page of {len(text)} bytes{named} - not an API answer)"
+    return text[:400]
+
+
 def call(
     path: str,
     method: str = "GET",
     body: dict | None = None,
     timeout: float | None = None,
+    retry_transient: bool = False,
 ) -> Any:
+    """One API request. `retry_transient` makes a 502/503/504 raise
+    TransientHTTPError for a polling caller to absorb; otherwise every HTTP
+    error ends the run with its status and a readable detail."""
     if not path.startswith("/") or "://" in path:
         sys.exit(f"Refusing suspicious API path: {path}")
     request = https_request(
@@ -142,7 +180,9 @@ def call(
         with open_checked(request, timeout, follow_redirects=False) as response:
             return json.load(response)
     except urllib.error.HTTPError as error:
-        detail = error.read().decode(errors="replace")[:400]
+        detail = error_detail(error)
+        if retry_transient and error.code in TRANSIENT_HTTP:
+            raise TransientHTTPError(f"HTTP {error.code} {detail}") from error
         if error.code == 403 and "Guest role in both projects" in detail:
             detail += (
                 "\nHint: cross-project links need Guest in BOTH projects. "
@@ -437,32 +477,66 @@ def time_left(deadline: float | None) -> float | None:
     return left
 
 
-def pipeline_for(
+def pipeline_by_id(
     project: str,
-    iid: str | None,
-    pipeline_id: str | None,
+    pipeline_id: Any,
     deadline: float | None = None,
+    retry_transient: bool = False,
 ) -> dict:
-    # Every call re-reads the budget: the lookup can take two requests, and
-    # the first one may have spent what the second was going to use.
-    if pipeline_id:
-        return call(
-            f"/projects/{encoded(project)}/pipelines/{numeric(pipeline_id, 'pipeline id')}",
-            timeout=time_left(deadline),
-        )
-    pipelines = call(
-        f"{mr_path(project, str(iid))}/pipelines", timeout=time_left(deadline)
-    )
-    if not pipelines:
-        sys.exit(
-            f"No pipeline on !{iid}. Unauthenticated reads answer 200 with an "
-            "empty array, so check the token before reading this as 'none ran'."
-        )
     return call(
-        f"/projects/{encoded(project)}/pipelines/"
-        f"{numeric(pipelines[0]['id'], 'pipeline id')}",
+        f"/projects/{encoded(project)}/pipelines/{numeric(pipeline_id, 'pipeline id')}",
         timeout=time_left(deadline),
+        retry_transient=retry_transient,
     )
+
+
+def mr_pipeline(
+    project: str,
+    iid: str,
+    deadline: float | None = None,
+    retry_transient: bool = False,
+) -> tuple[str, dict | None, dict | None]:
+    """The MR's current sha, its newest pipeline for exactly that sha, and
+    its newest pipeline of any sha.
+
+    "Newest pipeline of the MR" is the wrong question right after a push:
+    GitLab creates the new pipeline a few seconds later, and until then the
+    newest one is the previous commit's - often green. Matching on the sha the
+    MR points at now is what tells "not created yet" apart from "done".
+    """
+    # The list first, the MR second, so the sha is the last thing observed.
+    # In the other order a push between the two requests pairs the old sha
+    # with a list that still holds the old commit's finished pipeline, and
+    # that pipeline is returned as the state of a commit the MR left. This
+    # way round the same push leaves the new sha without a match - "not
+    # created yet" - and the next poll finds it.
+    # Every call re-reads the budget: the lookup takes two requests, and the
+    # first one may have spent what the second was going to use.
+    pipelines = call(
+        f"{mr_path(project, iid)}/pipelines",
+        timeout=time_left(deadline),
+        retry_transient=retry_transient,
+    )
+    merge_request = call(
+        mr_path(project, iid),
+        timeout=time_left(deadline),
+        retry_transient=retry_transient,
+    )
+    sha = str(merge_request["sha"])
+    pipelines = [p for p in pipelines if isinstance(p, dict)] if pipelines else []
+    newest = max(pipelines, key=lambda p: int(p["id"]), default=None)
+    current = max(
+        (p for p in pipelines if p.get("sha") == sha),
+        key=lambda p: int(p["id"]),
+        default=None,
+    )
+    return sha, current, newest
+
+
+NO_PIPELINE_HINT = (
+    "Unauthenticated reads answer 200 with an empty array, so check the token "
+    "before reading this as 'none ran'."
+)
 
 
 def print_failed_jobs(project: str, pipeline_id: Any) -> None:
@@ -476,7 +550,21 @@ def print_failed_jobs(project: str, pipeline_id: Any) -> None:
 
 
 def cmd_pipeline_status(args: argparse.Namespace) -> None:
-    pipeline = pipeline_for(args.project, args.merge_request, args.id)
+    if args.id:
+        pipeline = pipeline_by_id(args.project, args.id)
+    else:
+        sha, current, newest = mr_pipeline(args.project, args.merge_request)
+        if current is None:
+            # Same contract as below: a green pipeline of an older commit must
+            # not reach a caller as the state of this one.
+            if newest is None:
+                sys.exit(f"No pipeline on !{args.merge_request}. {NO_PIPELINE_HINT}")
+            sys.exit(
+                f"No pipeline yet for sha={sha[:8]}, the commit !{args.merge_request} "
+                f"points at. The newest one, {newest['id']} ({newest['status']}), "
+                f"is for sha={str(newest['sha'])[:8]} - an older push."
+            )
+        pipeline = current
     print(
         f"pipeline {pipeline['id']} {pipeline['status']} "
         f"sha={str(pipeline['sha'])[:8]} {pipeline['web_url']}"
@@ -489,50 +577,99 @@ def cmd_pipeline_status(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def probe_pipeline(
+    args: argparse.Namespace, deadline: float, last_sha: str | None
+) -> tuple[bool, str | None, dict | None]:
+    """One poll of `pipeline wait`: (read, sha, pipeline).
+
+    `read` is False when the probe failed; the caller then keeps the state it
+    had. With --merge-request the pipeline is the one for `sha`, the commit
+    the MR points at now, or None while that commit has none.
+    """
+    try:
+        if args.id:
+            return True, None, pipeline_by_id(args.project, args.id, deadline, True)
+        sha, current, _ = mr_pipeline(args.project, args.merge_request, deadline, True)
+    except (TransientHTTPError, urllib.error.URLError, TimeoutError) as error:
+        # DNS, TLS, a dropped connection or a gateway error: keep the last
+        # state and poll again. call() ends the run on any other HTTP error,
+        # so without this the loop dies on a hiccup instead of waiting, which
+        # is what it is for.
+        reason = getattr(error, "reason", None) or error
+        print(f"  probe failed ({reason}), still waiting", file=sys.stderr)
+        return False, last_sha, None
+    if sha != last_sha:
+        moved = " (the merge request moved)" if last_sha else ""
+        missing = "" if current else " - no pipeline for it yet"
+        print(f"waiting on !{args.merge_request} sha={sha[:8]}{moved}{missing}")
+    return True, sha, current
+
+
+def report_finished_pipeline(project: str, pipeline: dict) -> None:
+    status, pipeline_id = pipeline["status"], pipeline["id"]
+    print(
+        f"pipeline {pipeline_id} {status} "
+        f"sha={str(pipeline.get('sha'))[:8]} {pipeline['web_url']}"
+    )
+    if status == "failed":
+        print_failed_jobs(project, pipeline_id)
+    # A canceled pipeline is not a passed one: a caller chaining on this must
+    # not read "canceled" as green.
+    if status in ("failed", "canceled"):
+        sys.exit(1)
+
+
+def wait_ran_out(timeout: int, pipeline: dict | None, sha: str | None) -> NoReturn:
+    if pipeline is not None:
+        sys.exit(
+            f"pipeline {pipeline['id']} still {pipeline['status']} after "
+            f"{timeout}s - the wait ran out, this is not a result."
+        )
+    if sha is None:
+        sys.exit(
+            f"nothing could be read within {timeout}s - "
+            "the wait ran out, this is not a result."
+        )
+    sys.exit(
+        f"no pipeline for sha={sha[:8]} appeared within {timeout}s - "
+        f"the wait ran out, this is not a result. {NO_PIPELINE_HINT}"
+    )
+
+
 def cmd_pipeline_wait(args: argparse.Namespace) -> None:
     """Poll until the pipeline reaches a terminal status.
 
-    A failed probe is not a state: a transport error leaves the pipeline
-    "still running" and the loop keeps waiting rather than reporting a result
-    it never read.
+    With --merge-request, the pipeline waited on is the one for the sha the
+    MR points at, re-read on every poll: right after a push the newest
+    pipeline is still the previous commit's, and reporting it would hand the
+    caller an old result as the new one. A push during the wait moves the
+    target with it.
+
+    A failed probe is not a state: a transport error or a 502/503/504 from
+    the proxy leaves the last state standing and the loop keeps waiting
+    rather than reporting a result it never read.
     """
     # Before the first request: a slow lookup spends the caller's budget too.
     deadline = time.monotonic() + args.timeout
-    pipeline = pipeline_for(args.project, args.merge_request, args.id, deadline)
-    project, pipeline_id = args.project, pipeline["id"]
+    pipeline: dict | None = None
+    sha: str | None = None
     while True:
-        status = pipeline["status"]
-        if status in TERMINAL_PIPELINE_STATUS:
-            print(f"pipeline {pipeline_id} {status} {pipeline['web_url']}")
-            if status == "failed":
-                print_failed_jobs(project, pipeline_id)
-            # A canceled pipeline is not a passed one: a caller chaining on
-            # this must not read "canceled" as green.
-            if status in ("failed", "canceled"):
-                sys.exit(1)
+        read, seen, current = probe_pipeline(args, deadline, sha)
+        if read:
+            # Replaced even by None: once the MR moved, the old commit's
+            # pipeline is no longer an answer, whatever its status.
+            sha, pipeline = seen, current
+        if pipeline is not None and pipeline["status"] in TERMINAL_PIPELINE_STATUS:
+            report_finished_pipeline(args.project, pipeline)
             return
-        if time.monotonic() >= deadline:
-            sys.exit(
-                f"pipeline {pipeline_id} still {status} after {args.timeout}s - "
-                "the wait ran out, this is not a result."
-            )
         remaining = deadline - time.monotonic()
-        time.sleep(min(args.interval, max(remaining, 0)))
+        if remaining <= 0:
+            wait_ran_out(args.timeout, pipeline, sha)
+        time.sleep(min(args.interval, remaining))
         if time.monotonic() >= deadline:
-            # Back to the top, which reports the timeout. Issuing the request
-            # first would run past the deadline to say the same thing.
-            continue
-        try:
-            pipeline = call(
-                f"/projects/{encoded(project)}/pipelines/"
-                f"{numeric(pipeline_id, 'pipeline id')}",
-                timeout=time_left(deadline),
-            )
-        except urllib.error.URLError as error:
-            # DNS, TLS or a dropped connection: keep the last state and poll
-            # again. call() only handles HTTPError, so without this the loop
-            # dies on a hiccup instead of waiting, which is what it is for.
-            print(f"  probe failed ({error.reason}), still waiting", file=sys.stderr)
+            # Issuing the request now would run past the deadline only to
+            # report the same timeout.
+            wait_ran_out(args.timeout, pipeline, sha)
 
 
 def cmd_link(args: argparse.Namespace) -> None:
@@ -571,12 +708,8 @@ def fetch(url: str, agent: str) -> tuple[int, str, int, str, bool]:
         # a host, so it reports the reason instead of raising a traceback.
         return 0, "", 0, f"unreachable: {error.reason}", False
     text = raw.decode("utf-8", errors="replace")
-    lowered = text.lower()
-    start = lowered.find("<title>")
-    title = ""
-    if start != -1:
-        title = text[start + 7 : lowered.find("</title>", start)].strip()
-    walled = any(marker in lowered for marker in WALL_MARKERS)
+    title = html_title(text)
+    walled = any(marker in text.lower() for marker in WALL_MARKERS)
     return status, content_type, len(raw), title, walled
 
 
@@ -691,7 +824,11 @@ def build_parser() -> argparse.ArgumentParser:
         # Exactly one selector: neither asked for pipeline "None", both
         # silently ignored --merge-request.
         selector = sub.add_mutually_exclusive_group(required=True)
-        selector.add_argument("--merge-request", help="newest pipeline of this MR")
+        selector.add_argument(
+            "--merge-request",
+            help="the pipeline for the sha this MR points at now, never an "
+            "older push's",
+        )
         selector.add_argument("--id", help="a pipeline id, instead of --merge-request")
         if name == "wait":
             sub.add_argument("--interval", type=positive_int, default=60)
