@@ -88,7 +88,22 @@ def https_request(url: str, **kwargs: object) -> urllib.request.Request:
     return urllib.request.Request(url, **kwargs)  # type: ignore[arg-type]
 
 
-def open_checked(request: urllib.request.Request, timeout: float | None = None):
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Refuse every redirect: urllib copies a request's headers, the token
+    included, to whatever host a Location header names."""
+
+    def redirect_request(self, *args: object, **kwargs: object) -> None:
+        return None
+
+
+_NO_REDIRECT = urllib.request.build_opener(_NoRedirect)
+
+
+def open_checked(
+    request: urllib.request.Request,
+    timeout: float | None = None,
+    follow_redirects: bool = True,
+):
     """Open a Request whose scheme https_request() has already validated.
 
     The single place this script reaches the network, so the `file://` concern
@@ -96,7 +111,14 @@ def open_checked(request: urllib.request.Request, timeout: float | None = None):
 
     `timeout` is what keeps a wait bounded: without it a stalled connection
     blocks past any deadline the caller thinks it has.
+
+    A request that carries the token passes `follow_redirects=False`: a 3xx
+    then raises HTTPError instead of sending the token on.
     """
+    if not follow_redirects:
+        return _NO_REDIRECT.open(  # nosemgrep: dynamic-urllib-use-detected
+            request, timeout=timeout
+        )
     return urllib.request.urlopen(  # nosemgrep: dynamic-urllib-use-detected
         request, timeout=timeout
     )
@@ -117,7 +139,7 @@ def call(
         headers={"PRIVATE-TOKEN": token(), "Content-Type": "application/json"},
     )
     try:
-        with open_checked(request, timeout) as response:
+        with open_checked(request, timeout, follow_redirects=False) as response:
             return json.load(response)
     except urllib.error.HTTPError as error:
         detail = error.read().decode(errors="replace")[:400]

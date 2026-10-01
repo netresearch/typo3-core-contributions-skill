@@ -101,6 +101,45 @@ check "time_left is unbounded without a deadline" "True" "$(echo "$out" | sed -n
 check "time_left reports what is left of the budget" "5" "$(echo "$out" | sed -n 5p)"
 check "time_left refuses a request past the deadline" "True" "$(echo "$out" | sed -n 6p)"
 
+# A redirect from the API must not carry the token to the host it names:
+# urllib copies every request header to the redirect target.
+out="$(GIT_TYPO3_ORG_TOKEN=test-token python3 - "$SCRIPT" <<'PY'
+import http.server, importlib.util, sys, threading
+spec = importlib.util.spec_from_file_location("t3o", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+seen = []
+class Other(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        seen.append(self.headers.get("PRIVATE-TOKEN"))
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"{}")
+    def log_message(self, *args):
+        pass
+other = http.server.HTTPServer(("127.0.0.1", 0), Other)
+class Api(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(302)
+        self.send_header("Location", f"http://127.0.0.1:{other.server_port}/x")
+        self.end_headers()
+    def log_message(self, *args):
+        pass
+api = http.server.HTTPServer(("127.0.0.1", 0), Api)
+for server in (other, api):
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+mod.API = f"http://127.0.0.1:{api.server_port}/api/v4"
+try:
+    mod.call("/user", timeout=5)
+    print("followed")
+except SystemExit as stop:
+    print("HTTP 302" in str(stop))
+print(seen == [])
+PY
+)"
+check "an API redirect ends the call" "True" "$(echo "$out" | sed -n 1p)"
+check "the redirect target never receives the token" "True" "$(echo "$out" | sed -n 2p)"
+
 # An interval is seconds, and seconds are positive: -1 reached time.sleep(-1)
 # as a traceback, 0 made the poll a tight loop.
 for bad in "-1" "0" "x"; do
