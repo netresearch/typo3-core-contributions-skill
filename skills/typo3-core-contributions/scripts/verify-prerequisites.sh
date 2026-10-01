@@ -127,7 +127,7 @@ echo
 
 # 5. Check SSH connection to Gerrit
 echo "5. Checking Gerrit SSH connection..."
-if timeout 5 ssh -p 29418 -o StrictHostKeyChecking=no -o BatchMode=yes review.typo3.org gerrit version &>/dev/null; then
+if timeout 5 ssh -p 29418 -o StrictHostKeyChecking=accept-new -o BatchMode=yes review.typo3.org gerrit version &>/dev/null; then
     print_status "pass" "Gerrit SSH connection successful"
 else
     print_status "fail" "Cannot connect to Gerrit via SSH. Check your SSH keys and Gerrit setup"

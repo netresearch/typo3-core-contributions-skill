@@ -61,6 +61,8 @@ out="$(run 0 2>&1)"
 check "passes in a configured checkout with a Gerrit connection" 0 "$?"
 check "asks Gerrit for its version on port 29418" "29418 review.typo3.org gerrit version" \
     "$(grep -xE '29418|review.typo3.org|gerrit|version' "$SSH_LOG" | tr '\n' ' ' | sed 's/ $//')"
+check "accepts a new host key but refuses a changed one" "StrictHostKeyChecking=accept-new" \
+    "$(grep -x 'StrictHostKeyChecking=.*' "$SSH_LOG")"
 case "$out" in
     *"Jane Doe <jane@example.org>"*) echo "  ok   names the configured identity" ;;
     *) echo "  FAIL identity not reported: $out"; fail=1 ;;

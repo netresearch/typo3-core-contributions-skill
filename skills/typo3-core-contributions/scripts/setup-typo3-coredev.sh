@@ -215,7 +215,7 @@ configure_git() {
 
     # Test Gerrit connection
     print_step "Testing Gerrit SSH connection..."
-    if timeout 5 ssh -p 29418 -o StrictHostKeyChecking=no -o BatchMode=yes "${GERRIT_USER}@review.typo3.org" gerrit version &>/dev/null; then
+    if timeout 5 ssh -p 29418 -o StrictHostKeyChecking=accept-new -o BatchMode=yes "${GERRIT_USER}@review.typo3.org" gerrit version &>/dev/null; then
         print_success "Gerrit connection successful"
     else
         print_error "Cannot connect to Gerrit. Please verify your SSH keys are configured."
