@@ -308,20 +308,39 @@ def cmd_mr_create(args: argparse.Namespace) -> None:
             "testing done; no 'Testing' section found.",
             file=sys.stderr,
         )
+    labels = [label for label in (args.label or []) if label]
+    if not labels:
+        # Labelling our MRs is our convention, not a t3o rule: an MR opened
+        # without labels was only labelled after someone asked for it.
+        print(
+            "WARNING no --label given; our t3o MRs carry an area, a 'Skill::' "
+            "and a 'Type::' label (see t3o-gitlab-workflow.md).",
+            file=sys.stderr,
+        )
     merge_request = call(
         f"/projects/{encoded(args.project)}/merge_requests",
         "POST",
-        {
-            "source_branch": args.source,
-            "target_branch": args.target,
-            "title": title,
-            "description": description,
-        },
+        mr_create_body(args.source, args.target, title, description, labels),
     )
     print(
         f"!{merge_request['iid']} {merge_request['web_url']} "
         f"(draft={merge_request['draft']})"
     )
+    report_labels(merge_request.get("labels") or [], labels)
+
+
+def mr_create_body(
+    source: str, target: str, title: str, description: str, labels: list[str]
+) -> dict:
+    body = {
+        "source_branch": source,
+        "target_branch": target,
+        "title": title,
+        "description": description,
+    }
+    if labels:
+        body["labels"] = ",".join(labels)
+    return body
 
 
 DRAFT_PREFIX = "Draft: "
@@ -642,6 +661,7 @@ def build_parser() -> argparse.ArgumentParser:
     mr_create.add_argument("--description-file")
     mr_create.add_argument("--draft", action="store_true", default=True)
     mr_create.add_argument("--no-draft", dest="draft", action="store_false")
+    mr_create.add_argument("--label", action="append")
     mr_create.set_defaults(func=cmd_mr_create)
 
     mr_update = mr_sub.add_parser("update")

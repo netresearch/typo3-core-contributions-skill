@@ -81,15 +81,15 @@ so prove it afterwards with the `curl` above.
 `${CLAUDE_SKILL_DIR}/scripts/t3o-gitlab.py` wraps the calls below — start there
 rather than hand-rolling curl.
 
-It covers a merge request's whole life: `mr create`, `mr update` (title,
-`--description-file`, `--label`, `--draft`/`--ready`) and `mr show` — which
-prints state, draft, `detailed_merge_status`, the head pipeline and whether
-threads are unresolved, i.e. the merge gate in one call — plus `pipeline
-status` and `pipeline wait --merge-request <iid>`, which polls to a terminal
-status and lists the failed jobs. Reach for those before a hand-rolled curl:
-one session re-inlined `PRIVATE-TOKEN: $(cat ~/.secrets/…)` about sixty times
-for exactly these operations, and one of its hand-written `sleep` watchers was
-killed by the OOM killer mid-wait (2026-09-14).
+It covers a merge request's whole life: `mr create` (with `--label`),
+`mr update` (title, `--description-file`, `--label`, `--draft`/`--ready`) and
+`mr show` — which prints state, draft, `detailed_merge_status`, the head
+pipeline and whether threads are unresolved, i.e. the merge gate in one call —
+plus `pipeline status` and `pipeline wait --merge-request <iid>`, which polls to
+a terminal status and lists the failed jobs. Reach for those before a
+hand-rolled curl: one session re-inlined `PRIVATE-TOKEN: $(cat ~/.secrets/…)`
+about sixty times for exactly these operations, and one of its hand-written
+`sleep` watchers was killed by the OOM killer mid-wait (2026-09-14).
 
 Mind what it still does **not** wrap: closing or reopening an MR
 (`state_event`), merging, and reading discussions. Whenever you do fall back to
@@ -178,6 +178,8 @@ The binding rules:
 - **Maintainers merge with review threads still open.** Nothing in `ter` blocks a merge on unresolved discussions, and a merge can land while a review is being written. Read the merge request's `state` again immediately before posting review comments — a check of `sha` and `diff_refs` alone does not tell you. (`!911` was merged at 14:31 UTC; three review threads arrived at 14:52 and were never read.)
 - **Findings from a review go into the review, never into new issues.** When the merge request is already merged, the review has nowhere to land: turn the findings into a follow-up merge request that fixes them, target `develop`, and link the original threads from its description. The only exception is the case above where you cannot push and forking is refused: then no follow-up merge request can exist, and the issue with a ready-to-apply diff is the fallback.
 
+**Our own convention on top: label every merge request when it is opened** — one area label, one `Skill::` and one `Type::` label, plus `Process:: Review` once it leaves draft (see the label list below). The t3o workflow does not ask for labels and the maintainers' own MRs carry none; we label ours so they can be filtered and triaged. `mr create --label …` sets them in the create call and reads them back. One of ours went out ready for review without a single label (2026-09-30).
+
 ### Stacking a merge request on another one
 
 When a change depends on one still in review, branch off that branch and target
@@ -251,14 +253,26 @@ also wants Summary, Steps to reproduce, an Example URL, current vs expected
 behaviour, and logs.
 
 Their trailing `/label ~ter` quick action refers to a label that does not exist
-in `ter` — the real area labels are `TER Website`, `TER Extensions` and
-`extensions.typo3.org`. Set labels explicitly rather than relying on the
-template.
+in `ter` — the area labels are listed below. Set labels explicitly rather
+than relying on the template.
 
-House label taxonomy: `Type::Bug` / `Type::Feature` / `Type::Task`,
-`Skill:: Backend|Frontend|Ops|Design|Solr|Content`, `Process: To discuss`,
-`Process:: Review`, plus area labels. When the cause of a finding is not
-established, `Process: To discuss` is more honest than `Type::Bug`.
+House label taxonomy in `ter` (read from the project's label list,
+2026-10-01):
+
+- `Type::Bug`, `Type::Feature`, `Type::Task`, `Type::Good First Issue`,
+  `Type:: Concept`, `Type:: High Priority`, `Type:: User Feedback`
+- `Skill:: Backend|Frontend|Solr|Ops|Design|Content|Documentation|Integration`
+- `Process:: Review`, `Process:: Awaiting Feedback`, `Process:: Blocker`,
+  `Process:: needs refinement`, and the unscoped `Process: To discuss`
+- area: `TER Website`, `TER Extensions`, `extensions.typo3.org`,
+  `Extension management`, `Extension detail`,
+  `Extension listing (Solr results)`, `REST API`, `Packagist Integration`,
+  `DevOps`
+- other: `Discussion`, `Doing`, `To Do`, `technical-debt`
+
+When the cause of a finding is not established, `Process: To discuss` is more
+honest than `Type::Bug`. Re-read the list before relying on it:
+`GET /projects/:id/labels?include_ancestor_groups=true`.
 
 **`Type::`, `Skill::` and `Process::` are scoped labels — one value each.**
 GitLab treats a `key::value` label as exclusive within its key, so a second
