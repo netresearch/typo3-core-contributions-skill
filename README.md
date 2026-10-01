@@ -341,7 +341,7 @@ In CI, `tests.yml` (Skill Tests) runs every `tests/**/*.sh` on each pull request
 - **Composer:** `composer.json` requires `netresearch/composer-agent-skill-plugin` (constraint `*`), the Composer plugin for packages of type `ai-agent-skill`. No lock file is committed: the package is installed as a dependency of other projects, whose lock files pin it.
 - **Pre-commit hooks:** each hook repository in `.pre-commit-config.yaml` is pinned by `rev:`.
 - **CI:** the workflows call reusable workflows of `netresearch/skill-repo-skill`, `netresearch/.github` and `netresearch/typo3-ci-workflows` at `@main`; those pin their actions by commit SHA.
-- **Updates:** Renovate (`renovate.json`, preset `github>netresearch/renovate-config`) opens pull requests for new hook revisions; `auto-merge-deps.yml` merges dependency pull requests once the required checks pass. Composer Audit and dependency review check dependency changes on pull requests.
+- **Updates:** Renovate (`renovate.json`, preset `github>netresearch/renovate-config`) opens pull requests for new hook revisions; `auto-merge-deps.yml` merges dependency pull requests once the required checks pass, except those labelled `deps-no-automerge` or `deps-major`. Composer Audit and dependency review check dependency changes on pull requests.
 - **Selection:** a new dependency is added only when a script or the tooling needs it, from its upstream source (Packagist, the tool's own repository), under a licence compatible with this repository's.
 
 ## Governance and policies

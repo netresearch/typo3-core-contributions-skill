@@ -35,7 +35,7 @@ In the tables below, `scripts/<name>` stands for `skills/typo3-core-contribution
 - **TYPO3 services.** Responses from Forge, git.typo3.org and Gerrit are remote input. `t3o-gitlab.py` passes ids it reads from a response through `numeric()` before it puts them into a path, and prints fields rather than executing anything from them.
 - **Contributors to this repository.** Changes reach `main` through pull requests, checked by the workflows in `.github/workflows/`. The pre-commit hooks in `.pre-commit-config.yaml` run the same linters locally.
 - **CI.** Workflows run on GitHub-hosted runners with `permissions: {}` at the top level; each job grants the scopes its reusable needs. The two `pull_request_target` callers (`auto-merge-deps.yml`, `labeler.yml`) call reusables that merge or label without checking out pull request code, as their header comments state.
-- **Dependency bot.** Renovate (`renovate.json`, preset `github>netresearch/renovate-config`) opens pull requests that bump the pinned `rev:` of the pre-commit hooks; `auto-merge-deps.yml` merges dependency pull requests once the required checks pass.
+- **Dependency bot.** Renovate (`renovate.json`, preset `github>netresearch/renovate-config`) opens pull requests that bump the pinned `rev:` of the pre-commit hooks; `auto-merge-deps.yml` merges dependency pull requests once the required checks pass, except those labelled `deps-no-automerge` or `deps-major`.
 
 ## Threats and countermeasures
 
