@@ -13,7 +13,8 @@ This document states what a user can expect from this repository in terms of sec
 | Helper scripts | `skills/typo3-core-contributions/scripts/*.py`, `skills/typo3-core-contributions/scripts/*.sh` | On the contributor's machine, started by the contributor or by the agent, with the contributor's user rights and credentials. |
 | Commit message template | `assets/commit-template.txt` | Installed by the contributor as a Git commit template; plain text. |
 | Package metadata | `composer.json`, `plugin.json`, `.claude-plugin/plugin.json` | Read by Composer and by Claude Code when the skill is installed. |
-| Repository tooling | `.github/workflows/*.yml`, `tests/*.sh`, the root `scripts/verify-harness.sh`, `Build/`, `.pre-commit-config.yaml`, `evals/evals.json` | In this repository's CI and on contributors' machines. |
+| Repository tooling | `.github/workflows/*.yml`, `tests/*.sh`, `Build/`, `.pre-commit-config.yaml`, `evals/evals.json` | In this repository's CI and on contributors' machines. |
+| Harness check | the root `scripts/verify-harness.sh` | On contributors' machines; CI only lints it with ShellCheck. |
 
 The scripts talk to three services of the TYPO3 project: `forge.typo3.org` (Redmine, `create-forge-issue.sh`, `query-forge-metadata.sh`), `git.typo3.org` (GitLab, `t3o-gitlab.py`) and `review.typo3.org` (Gerrit SSH, `verify-prerequisites.sh`, `setup-typo3-coredev.sh`). The repository runs no server and stores no data; the scripts keep no state beyond the files and Git configuration they are asked to write.
 
