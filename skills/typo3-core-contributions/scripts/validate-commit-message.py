@@ -72,6 +72,10 @@ class CommitMessageValidator:
 
         commit_type = match.group(1)
 
+        # "[TYPE] Subject": the type is followed by a space, not glued to it
+        if not subject[match.end() :].startswith(" "):
+            self.errors.append("Put a space between the commit type and the subject")
+
         # Check for breaking change prefix
         if subject.startswith("[!!!]") and commit_type == "BUGFIX":
             self.warnings.append(

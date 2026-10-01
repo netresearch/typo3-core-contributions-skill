@@ -89,6 +89,9 @@ check "warns about a breaking BUGFIX" 0 "$?"
 write nested.txt '[[!!!]FEATURE] Remove deprecated TypoScript syntax'
 python3 "$SCRIPT" --file "$WORK/nested.txt" >/dev/null 2>&1
 check "rejects the marker inside the type brackets" 1 "$?"
+write glued.txt '[!!!][FEATURE]Remove deprecated TypoScript syntax'
+python3 "$SCRIPT" --file "$WORK/glued.txt" >/dev/null 2>&1
+check "rejects a subject glued to the type" 1 "$?"
 
 # Body lines are wrapped at 72 characters, lines carrying a URL excepted. The
 # check existed but was never called. It warns, so the exit code stays 0.
