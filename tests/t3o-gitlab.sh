@@ -62,6 +62,60 @@ esac
 env -u GIT_TYPO3_ORG_TOKEN python3 "$SCRIPT" mr update a/b 1 --draft --ready >/dev/null 2>&1
 check "mr update rejects --draft with --ready" "2" "$?"
 
+# mr create: --label is wired into the parser and repeatable.
+out="$(python3 - "$SCRIPT" <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("t3o", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+args = mod.build_parser().parse_args(
+    ["mr", "create", "a/b", "--source", "s", "--title", "t", "--label", "Type::Bug", "--label", "Skill:: Backend"]
+)
+print(args.label)
+PY
+)"
+check "mr create collects repeated --label" "['Type::Bug', 'Skill:: Backend']" "$out"
+
+# The command itself, with the API call replaced: the labels must reach the
+# POST it sends, and report_labels() must read them back from the answer.
+out="$(python3 - "$SCRIPT" 2>&1 <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("t3o", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+sent = {}
+def fake_call(path, method="GET", body=None):
+    sent.update(body or {})
+    return {"iid": 1, "web_url": "u", "draft": True, "labels": ["Type::Bug"]}
+mod.call = fake_call
+args = mod.build_parser().parse_args(
+    ["mr", "create", "a/b", "--source", "s", "--title", "t", "--description", "Testing",
+     "--label", "Type::Bug", "--label", "Skill:: Backend"]
+)
+mod.cmd_mr_create(args)
+print("sent=" + sent.get("labels", "-"))
+PY
+)"
+case "$out" in
+    *"sent=Type::Bug,Skill:: Backend"*) echo "  ok   mr create sends --label in its POST" ;;
+    *) echo "  FAIL mr create did not send the labels: $out"; fail=1 ;;
+esac
+case "$out" in
+    *"WARNING labels not applied: Skill:: Backend"*) echo "  ok   mr create reports a dropped label" ;;
+    *) echo "  FAIL mr create did not report the dropped label: $out"; fail=1 ;;
+esac
+# A create without --label warns before any request. HOME is redirected so
+# the token file fallback cannot find a real token and the call stops right
+# after the warning.
+warn_home="$(mktemp -d)"
+out="$(env -u GIT_TYPO3_ORG_TOKEN HOME="$warn_home" python3 "$SCRIPT" mr create a/b \
+    --source s --title t --description "Testing: none" 2>&1)"
+case "$out" in
+    *"WARNING no --label given"*) echo "  ok   mr create warns without --label" ;;
+    *) echo "  FAIL mr create did not warn without --label: $out"; fail=1 ;;
+esac
+rm -rf "$warn_home"
+
 # A pipeline command with no selector once asked for pipeline "None".
 env -u GIT_TYPO3_ORG_TOKEN python3 "$SCRIPT" pipeline status a/b >/dev/null 2>&1
 check "pipeline status requires a selector" "2" "$?"
@@ -87,6 +141,9 @@ print(mod.time_left(None) is None)
 # was clamped to 1s, so every call could still run a second past the
 # deadline, and the initial lookup carried no timeout at all.
 print(round(mod.time_left(time.monotonic() + 5) or 0))
+# mr create sends labels in the create call, or no labels key at all.
+print(mod.mr_create_body("s", "develop", "t", "d", ["Type::Bug", "Skill:: Backend"]).get("labels"))
+print("labels" in mod.mr_create_body("s", "develop", "t", "d", []))
 try:
     mod.time_left(time.monotonic() - 1)
     print("no exit")
@@ -99,7 +156,9 @@ check "mr_path url-encodes the project" "/projects/a%2Fb/merge_requests/7" "$(ec
 check "positive_int accepts a plain interval" "60" "$(echo "$out" | sed -n 3p)"
 check "time_left is unbounded without a deadline" "True" "$(echo "$out" | sed -n 4p)"
 check "time_left reports what is left of the budget" "5" "$(echo "$out" | sed -n 5p)"
-check "time_left refuses a request past the deadline" "True" "$(echo "$out" | sed -n 6p)"
+check "time_left refuses a request past the deadline" "True" "$(echo "$out" | sed -n 8p)"
+check "mr create sends the labels it was given" "Type::Bug,Skill:: Backend" "$(echo "$out" | sed -n 6p)"
+check "mr create sends no labels key without --label" "False" "$(echo "$out" | sed -n 7p)"
 
 # A redirect from the API must not carry the token to the host it names:
 # urllib copies every request header to the redirect target.
