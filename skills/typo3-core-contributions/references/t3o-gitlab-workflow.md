@@ -380,10 +380,17 @@ worked first time with four rules:
   least one area label.
 
   ```bash
+  AREAS='["TER Website","TER Extensions","extensions.typo3.org","Extension management",
+          "Extension detail","Extension listing (Solr results)","REST API",
+          "Packagist Integration","DevOps"]'
   curl -sf -H "PRIVATE-TOKEN: $GIT_TYPO3_ORG_TOKEN" "$API/issues?state=opened&per_page=100" \
-    | jq -r '.[] | select((.labels|map(select(startswith("Type::")))|length)!=1
-                       or (.labels|map(select(startswith("Skill::")))|length)!=1) | .iid'
+    | jq -r --argjson areas "$AREAS" '.[]
+        | select((.labels|map(select(startswith("Type::")))|length)!=1
+              or (.labels|map(select(startswith("Skill::")))|length)!=1
+              or (.labels|map(select(IN($areas[])))|length)<1) | .iid'
   ```
+
+  The area set is `ter`'s, from the label list above; re-read it per project.
 - **Close with the evidence, then the state:** a note naming the commit, the
   live measurement or the decision that settles it, then
   `PUT /issues/<iid>` with `state_event=close`. For a duplicate, post the note
