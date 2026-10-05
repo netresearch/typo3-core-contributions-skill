@@ -62,6 +62,56 @@ esac
 env -u GIT_TYPO3_ORG_TOKEN python3 "$SCRIPT" mr update a/b 1 --draft --ready >/dev/null 2>&1
 check "mr update rejects --draft with --ready" "2" "$?"
 
+# A new --title alone must not take a draft out of draft: GitLab reads the
+# draft state from the title, so a title without the prefix readies the MR
+# (ter !945 stood ready for nine seconds that way, 2026-10-05).
+out="$(python3 - "$SCRIPT" 2>&1 <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("t3o", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+for current_draft in (True, False):
+    sent = {}
+    def fake_call(path, method="GET", body=None):
+        if method == "GET":
+            return {"title": ("Draft: " if current_draft else "") + "[BUGFIX] Old", "draft": current_draft}
+        sent.update(body or {})
+        return {"iid": 1, "web_url": "u", "draft": current_draft, "labels": []}
+    mod.call = fake_call
+    mod.cmd_mr_update(mod.build_parser().parse_args(["mr", "update", "a/b", "1", "--title", "[BUGFIX] New"]))
+    print(f"draft={current_draft} sent={sent.get('title')}")
+PY
+)"
+case "$out" in
+    *"draft=True sent=Draft: [BUGFIX] New"*) echo "  ok   mr update --title keeps a draft a draft" ;;
+    *) echo "  FAIL mr update --title readied a draft: $out"; fail=1 ;;
+esac
+case "$out" in
+    *"draft=False sent=[BUGFIX] New"*) echo "  ok   mr update --title leaves a ready MR ready" ;;
+    *) echo "  FAIL mr update --title drafted a ready MR: $out"; fail=1 ;;
+esac
+# A prefix typed into --title is a request for a draft, also on a ready MR.
+out="$(python3 - "$SCRIPT" 2>&1 <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("t3o", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+sent = {}
+def fake_call(path, method="GET", body=None):
+    if method == "GET":
+        return {"title": "[BUGFIX] Old", "draft": False}
+    sent.update(body or {})
+    return {"iid": 1, "web_url": "u", "draft": True, "labels": []}
+mod.call = fake_call
+mod.cmd_mr_update(mod.build_parser().parse_args(["mr", "update", "a/b", "1", "--title", "Draft: [BUGFIX] New"]))
+print(f"sent={sent.get('title')}")
+PY
+)"
+case "$out" in
+    *"sent=Draft: [BUGFIX] New"*) echo "  ok   mr update --title keeps a typed Draft: prefix" ;;
+    *) echo "  FAIL mr update --title dropped a typed Draft: prefix: $out"; fail=1 ;;
+esac
+
 # mr create: --label is wired into the parser and repeatable.
 out="$(python3 - "$SCRIPT" <<'PY'
 import importlib.util, sys

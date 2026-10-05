@@ -413,14 +413,20 @@ def cmd_mr_update(args: argparse.Namespace) -> None:
     labels = [label for label in (args.label or []) if label]
     body: dict = {}
     title = args.title
-    if args.draft is not None and title is None:
+    draft = args.draft
+    if draft is None and title is not None:
+        # A new title alone keeps the current state: GitLab derives `draft`
+        # from the title, so sending it without the prefix would ready a draft.
+        # A prefix the caller typed is a request for a draft and stays.
+        draft = strip_draft(title) != title or bool(
+            call(mr_path(args.project, args.iid)).get("draft")
+        )
+    elif draft is not None and title is None:
         title = strip_draft(str(call(mr_path(args.project, args.iid))["title"]))
     if title is not None:
-        # Only when a draft state was asked for: `--title "Draft: Fix"` alone
-        # must keep the prefix the caller typed, not silently ready the MR.
-        if args.draft is True:
+        if draft:
             title = f"{DRAFT_PREFIX}{strip_draft(title)}"
-        elif args.draft is False:
+        else:
             title = strip_draft(title)
         body["title"] = title
     description = read_text_arg(args.description, args.description_file)
