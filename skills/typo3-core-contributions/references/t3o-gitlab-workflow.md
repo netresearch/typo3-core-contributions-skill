@@ -192,6 +192,8 @@ The binding rules:
 - **You cannot merge your own merge request.** A maintainer reviews and merges. This is not a formality — do not `merge` even with Developer rights.
 - **Branch naming** is documented as `feature/<issue-number>-<description>` and `hotfix/<description>`. Repo practice also uses `task/` and `bugfix/` prefixes; keep the issue number either way.
 - **The MR description must state the changes *and the testing done*.** An MR without a testing section is incomplete by their rules.
+- **Every claim about framework behaviour in a commit or MR text needs its source.** Quote the `vendor/` file and line, or the live measurement, before you write why something is or is not needed. Three such sentences in one session were wrong and only a review found them (2026-10-05): that TYPO3 13 still reads a FlexForm's `switchableControllerActions` (it reads none, the list is inert), that the site exposes Bootstrap "only through its data API" (the jQuery plugins are there, see *Frontend JavaScript on the live site*), and that a property-mapping exception "gives an HTTP 500" (in Production the plugin's exception handler renders a message with HTTP 200).
+- **A UI change cannot be checked on a local instance.** No TER database dump is available: the DDEV project `ter` comes without a database, so there is no page tree, no plugin content, no frontend admin group and no Solr core to render against (`docker volume ls | grep -i ter` shows whether one exists on this machine). Prove what can be proved — controller unit tests for the variables a template gets, the JavaScript against the live bundle — and say in the testing section, in bold, that the rendered page was not verified on a running instance, so a maintainer looks at it on a test system before merging.
 - **Commit subjects use the Core prefixes** — `[BUGFIX]`, `[TASK]`, `[FEATURE]` — so `validate-commit-message.py` still applies, minus the Gerrit-only `Change-Id`. Use `Relates: #<iid>` for the site issue.
 - **Maintainers merge with review threads still open.** Nothing in `ter` blocks a merge on unresolved discussions, and a merge can land while a review is being written. Read the merge request's `state` again immediately before posting review comments — a check of `sha` and `diff_refs` alone does not tell you. (`!911` was merged at 14:31 UTC; three review threads arrived at 14:52 and were never read.) The same goes for pushing a fixup and for updating the description: a maintainer merged two merge requests while a third review round was running on them (2026-09-30), the fixup push then failed with `stale info` because the merge had deleted the branch, and the leftovers had to go into a follow-up merge request.
 - **Findings from a review go into the review, never into new issues.** When the merge request is already merged, the review has nowhere to land: turn the findings into a follow-up merge request that fixes them, target `develop`, and link the original threads from its description. The only exception is the case above where you cannot push and forking is refused: then no follow-up merge request can exist, and the issue with a ready-to-apply diff is the fallback.
@@ -361,6 +363,34 @@ an index comment instead.
 **URLs.** Issues resolve under both `/-/issues/<iid>` and `/-/work_items/<iid>`;
 the API returns the work-item form.
 
+### Labelling and closing many work items
+
+A triage pass over the whole tracker (75 open items in `ter`, 2026-10-05)
+worked first time with four rules:
+
+- **Read every item with its notes, related and closing merge requests first**
+  (`/issues/<iid>/notes`, `/related_merge_requests`, `/closed_by`). The reason to
+  close is usually in a comment, not in the description.
+- **Write with `add_labels`, never `labels`.** `labels` replaces the set and
+  silently drops what a maintainer chose. Before adding a scoped label, skip it
+  when the item already carries a value of that scope: a second `Type::` would
+  replace theirs.
+- **Verify the whole population afterwards with one predicate**, not by
+  reading the write responses: exactly one `Type::`, exactly one `Skill::`, at
+  least one area label.
+
+  ```bash
+  curl -sf -H "PRIVATE-TOKEN: $GIT_TYPO3_ORG_TOKEN" "$API/issues?state=opened&per_page=100" \
+    | jq -r '.[] | select((.labels|map(select(startswith("Type::")))|length)!=1
+                       or (.labels|map(select(startswith("Skill::")))|length)!=1) | .iid'
+  ```
+- **Close with the evidence, then the state:** a note naming the commit, the
+  live measurement or the decision that settles it, then
+  `PUT /issues/<iid>` with `state_event=close`. For a duplicate, post the note
+  `/duplicate #<iid>` — the quick action works through the notes API and links
+  both items. Close only what a measurement settles; an item whose fix is
+  merged but whose stored data is still wrong stays open.
+
 ## CI: check whether it runs at all
 
 Ask the project, do not assume. `ter` used to have `builds_access_level:
@@ -432,6 +462,14 @@ instead of appending a dotted line (ter !920, 2026-09-14).
 
 `test:unit` needs `TYPO3_PATH_WEB="$PWD/public"` and an existing
 `public/fileadmin/currentcoredata.json`.
+
+With one worktree per merge request, `cp -a <other worktree>/vendor .` saves
+the download, but it is not enough on its own: the path-repository symlinks
+under `vendor/t3o/` are relative and keep working, while the files TYPO3's
+composer installer writes carry the absolute path of the worktree they came
+from, and PHPUnit then stops with `Unable to determine path to entry script`.
+Run `composer install --ignore-platform-reqs --no-scripts` once after the copy;
+with the packages already in place it takes about three seconds.
 
 The suite leaves `public/fileadmin` behind without read permission for its
 owner (`d-wxr----t`), so removing a scratch clone afterwards fails with
@@ -695,6 +733,31 @@ Fingerprint the same way as with `curl` — status, `<title>`, byte size — bef
 reasoning about anything you measured in the page. Two runs answering with the
 identical byte size mean you photographed the same thing twice, usually because
 a selector matched the wrong element.
+
+Navigating to a URL that differs only in its `#fragment` is a same-document
+navigation and does not reload the page, so markup injected in the previous
+round is still there. Go to `about:blank` first when each case needs a fresh
+page.
+
+### Frontend JavaScript on the live site
+
+Measured on extensions.typo3.org on 2026-10-05, with the user agent above:
+
+```js
+({ bootstrap: typeof window.bootstrap,   // "undefined"
+   jQuery: typeof window.jQuery,         // "function"
+   tabPlugin: typeof jQuery.fn.tab })    // "function"
+```
+
+t3olayout's bundle (`main.min.js`) is built with browserify, so Bootstrap 5's
+UMD wrapper exports to `module.exports` and never sets a global. What reaches
+page scripts are Bootstrap's data API (`data-bs-toggle` click handling) and the
+jQuery plugins Bootstrap registers because t3olayout sets `window.jQuery`
+before requiring it. In `ter_fe2`'s `Default.js` that means `$(el).tab('show')`
+and `.tooltip()` work, while every `typeof bootstrap !== 'undefined'` branch —
+the extension carousel's `new bootstrap.Carousel(…)` among them — never runs.
+`Default.js` is loaded on every page, so scope a selector to the page it is
+meant for: t3olayout's news and listing partials have tab groups of their own.
 
 ## Screenshots and attachments
 
