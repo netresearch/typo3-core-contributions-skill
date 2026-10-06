@@ -254,7 +254,8 @@ otherwise reads a diff that assumes code they cannot see.
 ### Rebasing your own open merge requests onto `develop`
 
 `develop` moves under open merge requests, usually several at once. Rebasing
-three of them on `ter` in one pass (2026-09-14) turned up four things:
+three of them on `ter` in one pass (2026-09-14) turned up the first four of
+these things:
 
 - **Check that nobody else is on the branch.** A merge request pushed minutes
   ago with its pipeline still running belongs to a session that is still
@@ -279,6 +280,17 @@ three of them on `ter` in one pass (2026-09-14) turned up four things:
   hunk. Re-read both for the dropped change, the base SHA they name and the
   test counts they quote. On `!880` a whole commit-message paragraph described
   an `!is_array()` removal that no longer existed after the rebase.
+- **A modify/delete conflict means `develop` moved the code somewhere else.**
+  `git diff --name-status <old base> origin/develop` shows the `D` and `R`
+  entries: which file was deleted and where its test went. Apply the change
+  where that role now lives rather than restoring the file. Then look at what
+  the merge request itself added: a test file it created can now cover the same
+  class as the moved one, and belongs merged into it. Facts in the description
+  pinned to the old base, such as a caller trace "on `develop` @ `<sha>`", need
+  checking again on the new one. On `!932` (2026-10-05) `develop` had deleted
+  `ter_rest`'s `ExtensionRepository` and moved its test to EXT:ter's
+  domain-layer repository, which the merge request also tested in a file of its
+  own. The fix was to move the new case into the moved test and drop the file.
 - **A description written back through the API reads back one newline short**
   when the original was fetched with `jq -r`. Drop that one terminal newline
   and compare the rest exactly before concluding that the `PUT` did not apply
@@ -518,9 +530,21 @@ for ($i = 0; $i < 30; $i++) {
 fwrite(STDERR, "database never answered: $last\n");
 exit(1);
 PHP
-php -d memory_limit=512M vendor/bin/phpunit -c .gitlab-ci/Tests/phpunit-functional.xml
+rc=0
+php -d memory_limit=512M vendor/bin/phpunit -c .gitlab-ci/Tests/phpunit-functional.xml || rc=$?
+# the container runs as root: clear its scratch instances while still root
+rm -rf public/typo3temp/var/tests
+exit $rc
 SH
 ```
+
+The PHP image runs as root, so every `public/typo3temp/var/tests/functional-*`
+instance the suite creates in the mounted worktree belongs to root. Left behind,
+they make `rm -rf` and `git worktree remove` fail with `Permission denied` on
+the host. The script therefore removes them inside the container, after
+PHPUnit and on a red run too, and passes PHPUnit's exit status on. If they are
+already there from an earlier run, remove them the same way:
+`docker run --rm -v "$PWD/public/typo3temp:/t" alpine rm -rf /t/var/tests`.
 
 **Wait for a database through the driver the tests use.** The `test:functional`
 job used to wait for MariaDB with `mysqladmin ping --silent`. That ping never
