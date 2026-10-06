@@ -24,7 +24,7 @@ Both comments are about the same property: the test must fail **in the position 
    git diff --stat path/to/file    # confirm exactly one file, one line
    ```
 
-3. Run the test again. It must fail, and the failure message must name the thing you changed. A test that errors out for an unrelated reason (missing fixture, bootstrap failure) has not been proven.
+3. Run the test again. It must fail, and the failure message must name the thing you changed. A test that errors out for an unrelated reason (missing fixture, bootstrap failure) has not been proven. The same goes for a test that fails on a different assertion or exception message: a stubbed collaborator returns its type default (`0`, `''`, `[]`), and that default can trip an earlier check before the code under test is reached. On ter !948 the reverted fix failed with `The extension size exceeded 0 bytes …` from a stubbed upload limit, not with the expected title message — the test only held because of the stub, and a review had to point it out.
 4. Restore the fix and re-run:
 
    ```bash

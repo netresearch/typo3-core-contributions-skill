@@ -749,5 +749,56 @@
         "description": "Says the hang is the runner, not the change"
       }
     ]
+  },
+  {
+    "name": "ter-upload-500-local-reproduction",
+    "prompt": "tailor ter:publish fails for our extension with 'Reason: An error occured on handling the request. (HTTP 500, code 1603956982)', three times in a row. The TER log is not available to me. How do I find out what the server actually rejects?",
+    "assertions": [
+      {
+        "type": "content_regex",
+        "value": "(?i)(ddev|local (TER|instance))",
+        "description": "Replays the upload against a local TER instance"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)development",
+        "description": "Uses the Development context, where the API returns the real exception message"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)keycloak",
+        "description": "Knows basic auth needs dummy Keycloak settings to fall through to fe_users"
+      }
+    ],
+    "samples": {
+      "passing": "Replay the upload against a local TER. Start the ter project with DDEV on the main branch, run database:updateschema and ddev create-keys, create the repository directory and seed a root page, a storage folder, an fe_group, an fe_user and the extension record. Basic auth first goes through the Keycloak provider, so put dummy keycloak settings into additional.php; the request then falls through to fe_users. Run tailor with TYPO3_API_USERNAME and TYPO3_API_PASSWORD against https://ter.ddev.site/. In the Development context the API returns the real exception message instead of code 1603956982.",
+      "failing": [
+        "Code 1603956982 is TER's generic error. Retry the upload a few times and, if it keeps failing, ask the TER maintainers for the server log.",
+        "Run tailor with -vvv against extensions.typo3.org until it prints more detail, and regenerate your API token in case it expired."
+      ]
+    }
+  },
+  {
+    "name": "proving-test-fails-for-the-right-reason",
+    "prompt": "I reverted only my fix and the new unit test now fails with 'The extension size exceeded 0 bytes which is the maximum for extension uploads.' The test expects 'The extension title is 289 bytes long'. Is the test proven?",
+    "assertions": [
+      {
+        "type": "content_regex",
+        "value": "(?i)\\b(no|not)\\b.{0,80}(proven|prove)",
+        "description": "Says the test is not proven"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)(stub|default|0 bytes)",
+        "description": "Names the stubbed default as the reason it failed"
+      }
+    ],
+    "samples": {
+      "passing": "No, the test is not proven. It fails, but on the wrong message: the upload size check fired because the stubbed configuration returns its type default 0, before the code you reverted is reached. Make the stub return a real limit, or assert that the size limit is never read, and run the reverted fix again until it fails with the title message.",
+      "failing": [
+        "Yes. The test is red without the fix and green with it, so it covers the change.",
+        "It fails without the fix, which is what matters; the exact message is secondary as long as an exception is thrown."
+      ]
+    }
   }
 ]

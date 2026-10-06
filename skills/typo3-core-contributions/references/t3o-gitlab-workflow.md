@@ -685,6 +685,56 @@ compare against another extension published in the same window
 (`current_version.upload_date` on any actively released key), and remember that
 a fix merged into `develop` is not yet running — `main` is what serves the site.
 
+### Reproduce a failed upload on a local instance
+
+When the reason stays generic (`An error occured on handling the request.`,
+code `1603956982`), replay the upload against a local TER. In the `Development`
+context the API answers with the exception message itself instead of the
+generic one. Check out the commit production serves (`main`), not `develop`.
+On an empty DDEV database five things are missing before tailor gets that far:
+
+```bash
+ddev start
+ddev exec vendor/bin/typo3 database:updateschema   # no argument; '*' through ddev exec printed the usage
+ddev create-keys                                    # JWT signing keys for the REST API
+ddev exec mkdir -p public/fileadmin/ter             # "Repository directory is not accessible."
+H=$(ddev exec php -r 'echo password_hash("password", PASSWORD_ARGON2I);')
+ddev mysql -e "
+INSERT INTO pages (uid,pid,title,doktype,is_siteroot,slug) VALUES (1,0,'Root',1,1,'/');
+INSERT INTO pages (uid,pid,title,doktype,slug) VALUES (2,1,'Storage',254,'/storage');
+INSERT INTO fe_groups (uid,pid,title) VALUES (1,2,'activated');
+INSERT INTO fe_users (uid,pid,username,password,usergroup) VALUES (1,2,'tester','$H','1');
+INSERT INTO tx_terfe2_domain_model_extension (pid,ext_key,frontend_user) VALUES (2,'<key>','tester');"
+```
+
+Basic auth goes through the Keycloak provider first, which throws
+`Keycloak clientId must not be empty.` without configuration. Dummy values make
+its token request fail quietly, so the request falls through to `fe_users`.
+`config/system/additional.php` is git-ignored and regenerated on every
+`ddev start`, so append them after starting:
+
+```php
+$GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['ter_rest']['keycloak'] = [
+    'tokenUrl' => 'http://127.0.0.1:9/token', 'clientId' => 'dummy', 'clientSecret' => 'dummy',
+];
+```
+
+Then publish the extension as CI does, from a checkout of the failing tag, with
+the tailor version and the upload comment taken from the job log:
+
+```bash
+TYPO3_REMOTE_BASE_URI=https://ter.ddev.site/ TYPO3_API_USERNAME=tester \
+TYPO3_API_PASSWORD=password TYPO3_EXTENSION_KEY=<key> \
+TYPO3_EXCLUDE_FROM_PACKAGING=Build/ExcludeFromPackaging.php \
+  php <tailor>/vendor/bin/tailor ter:publish --comment="$(cat comment.txt)" <version>
+```
+
+The stack trace lands in `var/log/` of the instance. To test a fix against the
+same data, `ddev stop --unlist ter` in the `main` checkout and `ddev start` in
+the bugfix worktree: the database volume belongs to the project name, so the
+seeded rows come along. Found this way (2026-10-05): `Data too long for column
+'title'`, a composer.json `description` whose only ` - ` sat near the end — ter !948.
+
 ## extensions.typo3.org sits behind Anubis — every live probe is suspect
 
 Anubis is a bot wall in front of `extensions.typo3.org`. Its `policy.yaml`
