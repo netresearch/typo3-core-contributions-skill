@@ -7,7 +7,7 @@ Load this before building anything for a report. The team's own pages decide cha
 - [`https://typo3.org/security.txt`](https://typo3.org/security.txt) is PGP clear-signed and holds `Contact`, `Encryption` (key URLs and an `openpgp4fpr:` fingerprint), `Preferred-Languages: en` and `Policy`. Print it whole: a filter on `Contact|Policy` hides `Encryption:` and `Preferred-Languages:`.
 - The `Policy:` URL redirects to `https://typo3.community/contribute/teams-committees/security/security-in-typo3`. Fetch with redirects followed (`curl -L`).
 - The contact page, `https://typo3.community/contribute/teams-committees/security/contact-us`, states the key id and the complete fingerprint for encrypted mail.
-- The bug bounty rules, `https://typo3.community/contribute/teams-committees/security/bug-bounty-program`, list what the team counts as a vulnerability. `https://typo3.org/community/teams/security/bug-bounty-program` redirects there; the root-relative links on the policy page belong to `typo3.community`, and `typo3.org/contribute/…` answers 404.
+- The public Bug Bounty Program is **discontinued** ([announcement](https://news.typo3.com/article/bug-bounty-program-discontinued)); its page, `https://typo3.community/contribute/teams-committees/security/bug-bounty-program`, now opens with "Bug Bounty Program Discontinued". Its former qualifying lists are history, not current reporting criteria. Reporting, review, coordinated disclosure, advisories, CVEs and credit continue. The root-relative links on the policy page belong to `typo3.community`; `typo3.org/contribute/…` answers 404.
 
 ## What the team asks for
 
@@ -19,7 +19,7 @@ Load this before building anything for a report. The team's own pages decide cha
 
 ## Is it in scope
 
-The bug bounty page lists as qualifying: SQL injection, server-side code execution, cross-site scripting, cross-site request forgery, authentication and authorization flaws, sensitive information disclosure. Among the non-qualifying ones are flaws that only work with a super-privileged user (install tool, maintenance mode). Third-party extensions count only where their distribution has an impact (download and installation counts); the decision is the team's. A finding that needs a backend login is not decided by the page, so say which role triggers it.
+The policy says: if you are unsure whether an issue is a security vulnerability, report it anyway; the Security Team decides. Say which role triggers the finding (anonymous visitor, frontend user, backend user, administrator). Do not judge scope from the lists on the discontinued bug bounty page.
 
 Look for an existing advisory first: `https://packagist.org/api/security-advisories/?packages[]=<vendor/package>` and the TYPO3-EXT-SA list. Compare the advisory's affected range with the version you hold. An advisory for another defect in the same extension does not cover yours.
 
