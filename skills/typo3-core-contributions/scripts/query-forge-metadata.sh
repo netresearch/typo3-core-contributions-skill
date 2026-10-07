@@ -41,8 +41,10 @@ QUERY_TYPE=${1:-all}
 echo -e "${YELLOW}Fetching TYPO3 Core project metadata...${NC}"
 echo ""
 
+# The key goes to curl as a header file (printf is a builtin), so it is on no
+# command line another process can read.
 RESPONSE=$(curl -s \
-    -H "X-Redmine-API-Key: $FORGE_API_KEY" \
+    -H @<(printf 'X-Redmine-API-Key: %s\n' "$FORGE_API_KEY") \
     https://forge.typo3.org/projects/typo3cms-core.json)
 
 # Check for errors
@@ -79,7 +81,7 @@ if [[ "$QUERY_TYPE" == "all" ]]; then
     cat <<'EXAMPLE'
   curl -X POST \
     -H "Content-Type: application/json" \
-    -H "X-Redmine-API-Key: $FORGE_API_KEY" \
+    -H @<(printf 'X-Redmine-API-Key: %s\n' "$FORGE_API_KEY") \
     -d '{
       "issue": {
         "project_id": "typo3cms-core",

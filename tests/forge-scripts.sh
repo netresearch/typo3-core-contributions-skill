@@ -33,8 +33,17 @@ check() { # check <name> <expected> <actual>
 mkdir "$WORK/bin" "$WORK/cwd"
 cat >"$WORK/bin/curl" <<'STUB'
 #!/usr/bin/env bash
-# Records one argument per line and prints the canned response.
+# Records one argument per line, the contents of every `@file` header
+# argument in $CURL_LOG.headers, and prints the canned response.
 printf '%s\n' "$@" >"$CURL_LOG"
+: >"$CURL_LOG.headers"
+prev=""
+for arg in "$@"; do
+    if [ "$prev" = "-H" ] && [ "${arg#@}" != "$arg" ]; then
+        cat "${arg#@}" >>"$CURL_LOG.headers"
+    fi
+    prev="$arg"
+done
 cat "$CURL_RESPONSE"
 STUB
 chmod +x "$WORK/bin/curl"
@@ -69,7 +78,8 @@ echo '{"issue":{"id":4242}}' >"$CURL_RESPONSE"
 create 'Fix the thing\nLine one\nLine two\n\x042\n1\n14\n4\nperf, ui\ny\n'
 check "creates an issue" 0 "$?"
 check "posts to the Forge issues endpoint" 1 "$(grep -cx 'https://forge.typo3.org/issues.json' "$CURL_LOG")"
-check "sends the key as a header" 1 "$(grep -cx 'X-Redmine-API-Key: dummy-key' "$CURL_LOG")"
+check "sends the key as a header" 1 "$(grep -cx 'X-Redmine-API-Key: dummy-key' "$CURL_LOG.headers")"
+check "the key is not on curl's command line" 0 "$(grep -c 'dummy-key' "$CURL_LOG")"
 check "subject" "Fix the thing" "$(payload .issue.subject)"
 check "multi-line description" "Line one
 Line two" "$(payload .issue.description)"
@@ -126,6 +136,8 @@ check "sends nothing without FORGE_API_KEY" "absent" \
 out="$(cd "$WORK/cwd" && PATH="$STUB_PATH" FORGE_API_KEY=dummy-key bash "$QUERY" trackers 2>&1)"
 check "trackers exits 0" 0 "$?"
 check "reads the core project" 1 "$(grep -cx 'https://forge.typo3.org/projects/typo3cms-core.json' "$CURL_LOG")"
+check "sends the key as a header" 1 "$(grep -cx 'X-Redmine-API-Key: dummy-key' "$CURL_LOG.headers")"
+check "the key is not on curl's command line" 0 "$(grep -c 'dummy-key' "$CURL_LOG")"
 case "$out" in
     *"2    Feature"*) echo "  ok   lists the trackers" ;;
     *) echo "  FAIL trackers not listed: $out"; fail=1 ;;
@@ -141,7 +153,7 @@ case "$out" in
     *) echo "  FAIL categories not listed: $out"; fail=1 ;;
 esac
 case "$out" in
-    *"-H \"X-Redmine-API-Key: \$FORGE_API_KEY\""*) echo "  ok   the example keeps \$FORGE_API_KEY unexpanded" ;;
+    *"-H @<(printf 'X-Redmine-API-Key: %s\\n' \"\$FORGE_API_KEY\")"*) echo "  ok   the example keeps \$FORGE_API_KEY unexpanded and off the command line" ;;
     *) echo "  FAIL the example does not show \$FORGE_API_KEY verbatim"; fail=1 ;;
 esac
 case "$out" in

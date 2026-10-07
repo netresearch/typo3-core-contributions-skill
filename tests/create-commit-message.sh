@@ -59,6 +59,27 @@ check "puts [!!!] in front of the type" "[!!!][FEATURE] Remove deprecated syntax
 python3 "$VALIDATOR" --file "$WORK/tree/breaking.txt" >/dev/null 2>&1
 check "the validator accepts the generated breaking change" 0 "$?"
 
+# The length limits count the whole line, type and [!!!] included: below 52 if
+# possible (a warning), below 72 in any case (an error).
+generate 'Keep the overview of open tasks short and clear' --type BUGFIX --issue 1 \
+    --output long.txt
+check "writes a line over 52 characters" 0 "$?"
+grep -q 'Subject line is 56 characters, type included (recommended max 52)' "$WORK/stdout"
+check "warns that the whole line is over 52" 0 "$?"
+
+generate 'Remove the deprecated TypoScript condition syntax' --type FEATURE --breaking \
+    --issue 1 --output breaking-long.txt
+check "accepts a breaking change whose summary alone is 49 characters" 0 "$?"
+check "counts [!!!] and the type" \
+    "[!!!][FEATURE] Remove the deprecated TypoScript condition syntax" \
+    "$(head -n1 "$WORK/tree/breaking-long.txt")"
+
+generate 'Remove the deprecated TypoScript condition syntax from the parser' \
+    --type FEATURE --breaking --issue 1 --output too-long.txt
+check "rejects a line over 72 characters" 1 "$?"
+grep -q 'Subject line is 80 characters, type included (max 72)' "$WORK/stdout"
+check "names the length of the whole line" 0 "$?"
+
 generate 'fix the thing' --type BUGFIX --issue 1 --output lower.txt
 check "rejects a subject that starts in lower case" 1 "$?"
 check "writes nothing for a rejected subject" "absent" \

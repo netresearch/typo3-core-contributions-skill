@@ -297,7 +297,8 @@ setup_typo3() {
     print_success "Trigger files created"
 
     print_step "Running TYPO3 setup..."
-    if ddev typo3 setup \
+    local setup_args
+    setup_args=$(printf '%q ' \
         --driver=mysqli \
         --host=db \
         --port=3306 \
@@ -305,12 +306,15 @@ setup_typo3() {
         --username=db \
         --password=db \
         --admin-username=backenduser \
-        --admin-user-password="$ADMIN_PASSWORD" \
         --admin-email="$GIT_EMAIL" \
         --project-name="TYPO3 Core Dev v14 PHP ${PHP_VERSION}" \
         --no-interaction \
         --server-type=apache \
-        --force; then
+        --force)
+    # The admin password reaches the web container on stdin and `typo3 setup`
+    # through TYPO3_SETUP_ADMIN_PASSWORD, so it is on no command line.
+    if printf '%s\n' "$ADMIN_PASSWORD" | ddev exec \
+        "IFS= read -r TYPO3_SETUP_ADMIN_PASSWORD && export TYPO3_SETUP_ADMIN_PASSWORD && typo3 setup ${setup_args}"; then
         print_success "TYPO3 setup completed"
     else
         print_error "TYPO3 setup failed"
@@ -431,5 +435,7 @@ main() {
     finalize
 }
 
-# Run main function
-main
+# Run main function, unless the file is sourced (tests call single steps)
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main
+fi

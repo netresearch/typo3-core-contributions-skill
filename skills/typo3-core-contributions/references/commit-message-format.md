@@ -57,9 +57,10 @@ Use `[!!!]` prefix before type for breaking changes:
 
 ### Length Limits
 
+The limits apply to the whole line, `[!!!]` and the type included ("Keep the whole line below 52 characters if possible, but below 72 in any case", [TYPO3 contribution guide, Commit Message](https://docs.typo3.org/m/typo3/guide-contributionworkflow/main/en-us/Appendix/CommitMessage.html)):
+
 - **Recommended**: 52 characters
 - **Absolute maximum**: 72 characters
-- Breaking changes get 5 extra chars: `[!!!]` is not counted against limit
 
 ### Imperative Mood
 

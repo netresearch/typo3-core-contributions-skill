@@ -46,17 +46,35 @@ COMMIT_TYPES = {
 BREAKING_CHANGE_PREFIX = "[!!!]"
 
 
-def validate_subject(subject: str, has_breaking: bool) -> tuple[bool, str | None]:
-    """Validate subject line against TYPO3 rules"""
-    max_length = 52 if not has_breaking else 47  # Account for [!!!] prefix
+RECOMMENDED_LINE_LENGTH = 52
+MAX_LINE_LENGTH = 72
 
-    if len(subject) > 72:
-        return False, "Subject line exceeds 72 characters (absolute limit)"
 
-    if len(subject) > max_length:
+def subject_line(subject: str, commit_type: str, has_breaking: bool) -> str:
+    """The first line as written: "[!!!][TYPE] Subject" for a breaking change."""
+    prefix = f"[{commit_type}]"
+    if has_breaking:
+        prefix = f"{BREAKING_CHANGE_PREFIX}{prefix}"
+    return f"{prefix} {subject}"
+
+
+def validate_subject(
+    subject: str, has_breaking: bool, commit_type: str = "TASK"
+) -> tuple[bool, str | None]:
+    """Validate subject line against TYPO3 rules.
+
+    The length limits count the whole line, [!!!] and the type included:
+    below 52 characters if possible, below 72 in any case (TYPO3
+    contribution guide, Appendix "Commit Message"). Only the 72 is enforced
+    here; main() warns past 52."""
+    line = subject_line(subject, commit_type, has_breaking)
+    if len(line) > MAX_LINE_LENGTH:
         return (
             False,
-            f"Subject line exceeds {max_length} characters (recommended limit)",
+            (
+                f"Subject line is {len(line)} characters, type included "
+                f"(max {MAX_LINE_LENGTH})"
+            ),
         )
 
     if not subject[0].isupper():
@@ -154,13 +172,21 @@ Examples:
         print(f"Breaking Change: Yes (will add {BREAKING_CHANGE_PREFIX} prefix)")
     print()
 
-    subject = input("Enter subject line (max 52 chars, imperative mood): ").strip()
+    subject = input(
+        "Enter subject after the type (whole line up to 52 chars, imperative mood): "
+    ).strip()
 
     # Validate subject
-    valid, error = validate_subject(subject, args.breaking)
+    valid, error = validate_subject(subject, args.breaking, args.type)
     if not valid:
         print(f"\n❌ Error: {error}")
         sys.exit(1)
+    line_length = len(subject_line(subject, args.type, args.breaking))
+    if line_length > RECOMMENDED_LINE_LENGTH:
+        print(
+            f"\n⚠️  Subject line is {line_length} characters, type included "
+            f"(recommended max {RECOMMENDED_LINE_LENGTH})"
+        )
 
     # Get description
     print("\nEnter description (explain how and why, not what).")
@@ -179,10 +205,7 @@ Examples:
 
     # Build commit message
     # A breaking change is "[!!!][FEATURE] ...": the marker precedes the type.
-    type_prefix = f"[{args.type}]"
-    if args.breaking:
-        type_prefix = f"{BREAKING_CHANGE_PREFIX}{type_prefix}"
-    message = f"{type_prefix} {subject}\n\n"
+    message = f"{subject_line(subject, args.type, args.breaking)}\n\n"
 
     if description:
         message += f"{description}\n\n"
