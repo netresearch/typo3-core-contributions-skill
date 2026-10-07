@@ -800,5 +800,43 @@
         "It fails without the fix, which is what matters; the exact message is secondary as long as an exception is thrown."
       ]
     }
+  },
+  {
+    "name": "security-report-read-the-policy-before-building",
+    "prompt": "I found an access-control flaw in a TYPO3 extension and want to send the TYPO3 Security Team a package with a patch and tests. What do I check before I build the package, and what must it contain?",
+    "assertions": [
+      {
+        "type": "content_regex",
+        "value": "(?i)security\\.txt",
+        "description": "Reads security.txt for channel, key and language"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)english",
+        "description": "Names English as the preferred language"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)(steps to reproduce|reproduction steps).{0,80}fresh",
+        "description": "Requires reproduction steps on a fresh TYPO3 website"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)(pgp|encrypt)",
+        "description": "Mentions the published OpenPGP key"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)(not|never).{0,80}(public|issue|merge request|branch)",
+        "description": "Keeps the finding out of public trackers and branches"
+      }
+    ],
+    "samples": {
+      "passing": "Read https://typo3.org/security.txt in full first: it names the address, the OpenPGP key to encrypt to and the preferred language, English. The policy requires the affected version and detailed steps to reproduce the issue on a fresh TYPO3 website. Do not put the finding into a public issue, merge request or branch. Package a patch per affected version, a test that fails before the patch and passes after it, and unpack the archive to check it.",
+      "failing": [
+        "Write a detailed German report with the patch and open an issue on forge.typo3.org so the team can see it.",
+        "Send the patch and the unit tests to the security address; the code speaks for itself."
+      ]
+    }
   }
 ]

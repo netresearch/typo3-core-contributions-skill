@@ -219,7 +219,8 @@ The channel for a security finding is the address in
 `security@typo3.org`, with the PGP key the file names and
 `Preferred-Languages: en`. Read the file itself rather than a summary of it.
 The fix then goes in through a maintainer; do not push a branch, open a merge
-request or file an issue that describes the vulnerability.
+request or file an issue that describes the vulnerability. What the report has
+to contain, and how to check the package before it leaves: `security-report.md`.
 
 ### Stacking a merge request on another one
 

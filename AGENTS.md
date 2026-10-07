@@ -18,6 +18,7 @@
 │   │   ├── gerrit-workflow.md
 │   │   ├── modern-typo3-patterns.md
 │   │   ├── proving-a-test.md
+│   │   ├── security-report.md
 │   │   ├── t3o-gitlab-workflow.md
 │   │   └── troubleshooting.md
 │   └── scripts/                         # Automation scripts
@@ -73,5 +74,6 @@ No Makefile or npm scripts. Key scripts live in `skills/typo3-core-contributions
 - [Account Setup](skills/typo3-core-contributions/references/account-setup.md)
 - [DDEV Setup](skills/typo3-core-contributions/references/ddev-setup-workflow.md)
 - [t3o Sites on git.typo3.org](skills/typo3-core-contributions/references/t3o-gitlab-workflow.md)
+- [Reporting a vulnerability](skills/typo3-core-contributions/references/security-report.md) — channel, language, required content and package checks for a report to the TYPO3 Security Team
 - [Architecture](docs/ARCHITECTURE.md)
 - [Security assurance case](docs/SECURITY-ASSURANCE.md) — trust boundaries, threats, countermeasures and limits
