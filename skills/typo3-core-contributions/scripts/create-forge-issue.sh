@@ -165,9 +165,11 @@ JSON_PAYLOAD=$(jq -n \
 echo ""
 echo -e "${YELLOW}Creating issue...${NC}"
 
+# The key goes to curl as a header file (printf is a builtin), so it is on no
+# command line another process can read.
 RESPONSE=$(curl -s -X POST \
     -H "Content-Type: application/json" \
-    -H "X-Redmine-API-Key: $FORGE_API_KEY" \
+    -H @<(printf 'X-Redmine-API-Key: %s\n' "$FORGE_API_KEY") \
     -d "$JSON_PAYLOAD" \
     https://forge.typo3.org/issues.json)
 

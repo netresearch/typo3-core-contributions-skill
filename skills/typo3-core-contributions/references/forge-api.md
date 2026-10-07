@@ -29,16 +29,16 @@ TYPO3 Forge (https://forge.typo3.org) is built on Redmine and exposes a REST API
 
 #### For GET Requests (Reading)
 
-Pass via HTTP header:
+Pass via HTTP header, read by curl from a file descriptor so the key is on no command line another process can see (`printf` is a shell builtin):
 ```bash
--H "X-Redmine-API-Key: your-api-key-here"
+-H @<(printf 'X-Redmine-API-Key: %s\n' "$FORGE_API_KEY")
 ```
 
 #### For POST Requests (Creating Issues)
 
 **Header authentication does NOT work for creating issues!** Use HTTP Basic Auth with API key as username:
 ```bash
-curl -u "your-api-key-here:x" \
+curl -K <(printf 'user = "%s:x"\n' "$FORGE_API_KEY") \
   -H "Content-Type: application/json" \
   -X POST \
   -d '{"issue": {...}}' \
@@ -47,13 +47,15 @@ curl -u "your-api-key-here:x" \
 
 Note: The password can be anything (we use "x") - only the API key as username matters.
 
+`-K <(...)` hands curl the credentials as a config file on a file descriptor, so the key is on no command line another process can read; `-u key:x` would put it there.
+
 #### For PUT Requests (Updating Issues)
 
 **Warning**: PUT requests may return 403 Forbidden depending on your account permissions. Some accounts can create issues but not update them via API. If you get 403 on PUT, you'll need to update issues manually through the web interface.
 
 ```bash
 # This may return 403 depending on permissions
-curl -u "your-api-key-here:x" \
+curl -K <(printf 'user = "%s:x"\n' "$FORGE_API_KEY") \
   -H "Content-Type: application/json" \
   -X PUT \
   -d '{"issue": {"description": "..."}}' \
@@ -82,7 +84,7 @@ https://forge.typo3.org
 ```bash
 curl -X POST \
   -H "Content-Type: application/json" \
-  -H "X-Redmine-API-Key: $FORGE_API_KEY" \
+  -H @<(printf 'X-Redmine-API-Key: %s\n' "$FORGE_API_KEY") \
   -d '{
     "issue": {
       "project_id": "typo3cms-core",
@@ -131,7 +133,7 @@ curl ... | grep -oP '"id":\K[0-9]+' | head -1
 
 **Request**:
 ```bash
-curl -H "X-Redmine-API-Key: $FORGE_API_KEY" \
+curl -H @<(printf 'X-Redmine-API-Key: %s\n' "$FORGE_API_KEY") \
   https://forge.typo3.org/projects/typo3cms-core.json
 ```
 
@@ -146,7 +148,7 @@ curl -H "X-Redmine-API-Key: $FORGE_API_KEY" \
 
 **Request**:
 ```bash
-curl -H "X-Redmine-API-Key: $FORGE_API_KEY" \
+curl -H @<(printf 'X-Redmine-API-Key: %s\n' "$FORGE_API_KEY") \
   https://forge.typo3.org/issues/105737.json
 ```
 
@@ -214,7 +216,7 @@ export FORGE_API_KEY="your-api-key-here"
 
 curl -X POST \
   -H "Content-Type: application/json" \
-  -H "X-Redmine-API-Key: $FORGE_API_KEY" \
+  -H @<(printf 'X-Redmine-API-Key: %s\n' "$FORGE_API_KEY") \
   -d '{
     "issue": {
       "project_id": "typo3cms-core",
@@ -238,7 +240,7 @@ curl -X POST \
 ```bash
 curl -X POST \
   -H "Content-Type: application/json" \
-  -H "X-Redmine-API-Key: $FORGE_API_KEY" \
+  -H @<(printf 'X-Redmine-API-Key: %s\n' "$FORGE_API_KEY") \
   -d '{
     "issue": {
       "project_id": "typo3cms-core",
@@ -261,7 +263,7 @@ curl -X POST \
 ```bash
 curl -X POST \
   -H "Content-Type: application/json" \
-  -H "X-Redmine-API-Key: $FORGE_API_KEY" \
+  -H @<(printf 'X-Redmine-API-Key: %s\n' "$FORGE_API_KEY") \
   -d '{
     "issue": {
       "project_id": "typo3cms-core",
@@ -408,7 +410,7 @@ echo "Resolves: #${ISSUE_ID}"
 Query multiple issues:
 ```bash
 for id in 105737 107881 108000; do
-  curl -H "X-Redmine-API-Key: $FORGE_API_KEY" \
+  curl -H @<(printf 'X-Redmine-API-Key: %s\n' "$FORGE_API_KEY") \
     "https://forge.typo3.org/issues/${id}.json"
 done
 ```
@@ -422,7 +424,7 @@ done
 # Create issue
 RESPONSE=$(curl -s -X POST \
   -H "Content-Type: application/json" \
-  -H "X-Redmine-API-Key: $FORGE_API_KEY" \
+  -H @<(printf 'X-Redmine-API-Key: %s\n' "$FORGE_API_KEY") \
   -d @issue.json \
   https://forge.typo3.org/issues.json)
 
