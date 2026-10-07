@@ -175,7 +175,10 @@ ddev exec 'echo "KEEP_FILE" > /var/www/html/typo3conf/ENABLE_INSTALL_TOOL'
 ### Step 11: Run TYPO3 Setup
 
 ```bash
-ddev typo3 setup \
+read -r -s -p "TYPO3 admin password: " ADMIN_PASSWORD; echo
+printf '%s\n' "$ADMIN_PASSWORD" | ddev exec 'IFS= read -r TYPO3_SETUP_ADMIN_PASSWORD \
+    && export TYPO3_SETUP_ADMIN_PASSWORD \
+    && typo3 setup \
     --driver=mysqli \
     --host=db \
     --port=3306 \
@@ -183,16 +186,15 @@ ddev typo3 setup \
     --username=db \
     --password=db \
     --admin-username=backenduser \
-    --admin-user-password='YOUR_SECURE_PASSWORD' \
-    --admin-email='YOUR@EMAIL' \
-    --project-name='TYPO3 Core Dev v14 PHP 8.4' \
+    --admin-email=YOUR@EMAIL \
+    --project-name="TYPO3 Core Dev v14 PHP 8.4" \
     --no-interaction \
     --server-type=apache \
-    --force
+    --force'
 ```
 
 **Important**:
-- Replace `YOUR_SECURE_PASSWORD` with your preferred admin password
+- The admin password goes to the web container on stdin and to `typo3 setup` as `TYPO3_SETUP_ADMIN_PASSWORD`, which the setup command reads in place of `--admin-user-password`; on a command line, other processes could read it
 - Replace `YOUR@EMAIL` with your email
 - Database credentials (db/db/db) are DDEV defaults
 
