@@ -23,6 +23,8 @@ The policy says: if you are unsure whether an issue is a security vulnerability,
 
 Look for an existing advisory first: `https://packagist.org/api/security-advisories/?packages[]=<vendor/package>` and the TYPO3-EXT-SA list. Compare the advisory's affected range with the version you hold. An advisory for another defect in the same extension does not cover yours.
 
+**State the affected version precisely, including the untagged case.** The flaw may live only in a development branch (Composer `dev-master`, `vN.x-dev`) with no tagged release carrying it — common where the dev branches are the only installable source for a newer TYPO3 version. Say so explicitly, name the branch and the exact commit, and name which tagged release is *not* affected. Then evidence that the vulnerable code is actually used, with Packagist per-version install counts: `https://packagist.org/packages/<vendor>/<package>/stats/<version>.json?average=monthly&from=YYYY-MM-01` — pass the Composer version (`dev-master`, `vN.x-dev`, or a tag) — and compare the dev-branch installs against the tagged release. The Security Team decides scope; give them the numbers rather than a claim.
+
 ## The package
 
 Build for a reader who has nothing but the archive.
@@ -34,3 +36,7 @@ Build for a reader who has nothing but the archive.
 5. **Verify the archive as it is received**: unpack it into an empty directory, follow its README word for word, run its tests, and compare the file list with the expected list. A tool that runs inside the package directory can add files; `qsv`, for example, writes cache files next to a CSV (the `data-tools` skill, `references/csv-processing.md`).
 6. **Scan the text for local paths, user names and session ids** before it leaves.
 7. **English throughout**, including the column headers of any CSV.
+
+## The covering e-mail
+
+Keep the e-mail body short. The team triages many reports and decides fast, and a long, exhaustive body reads as AI-generated filler that works against the report. Put the mechanism, the impact, the CVSS score, the affected versions and a one-line workaround in a few short paragraphs; move every detail — the full write-up, the reproduction, the permalinks, the patch descriptions and the test evidence — into the attached files, and do not restate the attachment in the body. Leave out anything the reader does not need in order to act: your own fork, an unpublished advisory of your own, or a credit instruction stay out of the body unless the policy asks for them.
