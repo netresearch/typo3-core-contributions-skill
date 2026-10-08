@@ -78,4 +78,5 @@ Read ALL failing job logs, never guess; fix everything in one patchset. Locally:
 | Commit hook | `references/commit-msg-hook.md` |
 | Proving a test | `references/proving-a-test.md` |
 | Reporting a vulnerability | `references/security-report.md` |
+| Proving a finding without a site | `references/security-proof-harness.md` |
 | Troubleshooting | `references/troubleshooting.md` |
