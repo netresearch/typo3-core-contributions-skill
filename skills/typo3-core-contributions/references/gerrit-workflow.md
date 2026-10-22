@@ -714,7 +714,7 @@ curl -s 'https://review.typo3.org/changes/<_number>/in' \
 
 An open backport (status `NEW`) has no tag yet. A change merged after the last release of its branch has an empty `tags` list too.
 
-**Step 3: When no release contains the change yet**, take the highest patch release of the branch and add one:
+**Step 3: When the change is merged but no release contains it yet**, take the highest patch release of the branch and add one. An open change has no release yet; this estimate holds only once it is merged:
 
 ```bash
 git ls-remote --tags --refs https://github.com/TYPO3/typo3.git 'refs/tags/v14.3.*' \
