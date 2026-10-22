@@ -692,6 +692,40 @@ Apply someone else's patch locally:
 git fetch origin refs/changes/45/12345/3 && git cherry-pick FETCH_HEAD
 ```
 
+### Finding the First Release That Contains a Change
+
+Changelog entries in a folder such as `14.3.x` shipped in a later patch release, and documentation names that exact release. The `Releases:` trailer of the commit names target branches; it is not the source of truth for the release. Gerrit's tag data is.
+
+These reads need no authentication. Every JSON answer from Gerrit starts with the line `)]}'`, which must be cut before parsing (`tail -n +2`).
+
+**Step 1: Find the change on every branch** (open and merged, not abandoned). Each entry carries `branch`, `status` and `_number`:
+
+```bash
+curl -s 'https://review.typo3.org/changes/?q=change:<Change-Id>+-status:abandoned' \
+  | tail -n +2 | jq -r '.[] | "\(._number) \(.branch) \(.status)"'
+```
+
+**Step 2: List the releases that contain a merged change.** `/changes/<_number>/in` returns `tags`; the lowest version tag is the first release:
+
+```bash
+curl -s 'https://review.typo3.org/changes/<_number>/in' \
+  | tail -n +2 | jq -r '.tags[]' | sort -V | head -n 1
+```
+
+An open backport (status `NEW`) has no tag yet. A change merged after the last release of its branch has an empty `tags` list too.
+
+**Step 3: When the change is merged but no release contains it yet**, take the highest patch release of the branch and add one. An open change has no release yet; this estimate holds only once it is merged:
+
+```bash
+git ls-remote --tags --refs https://github.com/TYPO3/typo3.git 'refs/tags/v14.3.*' \
+  | sed 's#.*refs/tags/##' | sort -V | tail -n 1
+# v14.3.9 -> the change ships in v14.3.10
+```
+
+Sort with `sort -V`: a plain `sort` puts `v14.3.10` before `v14.3.9`.
+
+**Example** (checked 2026-10-22): Change-Id `Iad0c35f1232fc2fee0cfee1929215e6a86502257` is change 95864 on `main` and change 96318 on `14.3`, both merged. `/changes/96318/in` returns the tags `v14.3.8` and `v14.3.9`, so the change first shipped in v14.3.8. `/changes/95864/in` returns no tag, because no `v15` release has been tagged from `main` yet.
+
 ### Topics
 
 Group related changes:
