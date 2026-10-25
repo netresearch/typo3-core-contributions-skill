@@ -47,9 +47,9 @@ No Makefile or npm scripts. Key scripts live in `skills/typo3-core-contributions
 
 - `bash skills/typo3-core-contributions/scripts/verify-prerequisites.sh` — check TYPO3 account, Gerrit SSH, Git config
 - `bash skills/typo3-core-contributions/scripts/setup-typo3-coredev.sh` — automated TYPO3 Core dev environment setup
-- `python3 skills/typo3-core-contributions/scripts/validate-commit-message.py` — validate commit message format
-- `python3 skills/typo3-core-contributions/scripts/create-commit-message.py` — generate compliant commit messages
-- `python3 skills/typo3-core-contributions/scripts/t3o-gitlab.py` — git.typo3.org helper: access level, issues, merge requests, links, bot-wall probe
+- `uv run skills/typo3-core-contributions/scripts/validate-commit-message.py` — validate commit message format
+- `uv run skills/typo3-core-contributions/scripts/create-commit-message.py` — generate compliant commit messages
+- `uv run skills/typo3-core-contributions/scripts/t3o-gitlab.py` — git.typo3.org helper: access level, issues, merge requests, links, bot-wall probe
 - `rc=0; for t in tests/*.sh; do bash "$t" || rc=1; done; exit $rc` — offline tests for the scripts; CI runs them in Skill Tests (`tests.yml`)
 
 ## Rules

@@ -3,6 +3,7 @@
 # SPDX-FileCopyrightText: Netresearch DTT GmbH
 name: typo3-core-contributions
 description: "Use when contributing to TYPO3 Core — Forge issues, Gerrit patches, cherry-picks, CI debugging — or when working on **git.typo3.org**, the t3o site GitLab (`services/t3o-sites/**`: extensions.typo3.org/ter, common/t3olayout, anubis): merge requests, issues, work items, labels, pipelines. Also use it to report a vulnerability in TYPO3 or a TYPO3 extension to the TYPO3 Security Team (security.txt). Core `main` is v15-in-progress (PHP 8.4/8.5); v14.3 LTS fixes land on branch `14.3` via cherry-pick. Triggers on: forge.typo3.org, review.typo3.org, git.typo3.org, t3o-sites, core patch, Gerrit review, TYPO3 Core contribution, TER website, t3olayout, security report, vulnerability report, security@typo3.org, TYPO3-EXT-SA."
+compatibility: "Requires uv (runs the Python scripts on Python 3.11 or later), git, ssh, curl, jq; GNU timeout for verify-prerequisites.sh and setup-typo3-coredev.sh; DDEV and Docker for setup-typo3-coredev.sh."
 ---
 
 # TYPO3 Core Contributions
@@ -61,7 +62,7 @@ Read ALL failing job logs, never guess; fix everything in one patchset. Locally:
 | Install hook | `cp Build/git-hooks/commit-msg .git/hooks/ && chmod +x .git/hooks/commit-msg` |
 | Fix email mismatch | `GIT_COMMITTER_EMAIL="registered@email" git commit --amend --no-edit` |
 | Forge API | `${CLAUDE_SKILL_DIR}/scripts/create-forge-issue.sh`, `references/forge-api.md` |
-| t3o GitLab | `python3 ${CLAUDE_SKILL_DIR}/scripts/t3o-gitlab.py access\|issue\|note\|mr create\|mr update\|mr show\|pipeline status\|pipeline wait\|link\|probe` |
+| t3o GitLab | `uv run ${CLAUDE_SKILL_DIR}/scripts/t3o-gitlab.py access\|issue\|note\|mr create\|mr update\|mr show\|pipeline status\|pipeline wait\|link\|probe` |
 
 ## References
 
