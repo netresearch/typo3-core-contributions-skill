@@ -155,7 +155,7 @@ second, so it produces a confident wrong answer about the network.
 ## Check your access level before planning anything
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/scripts/t3o-gitlab.py" access services/t3o-sites/extensions.typo3.org/ter
+uv run "${CLAUDE_SKILL_DIR}/scripts/t3o-gitlab.py" access services/t3o-sites/extensions.typo3.org/ter
 ```
 
 `permissions.project_access.access_level` decides which plan is even possible:
@@ -758,7 +758,7 @@ with the identical byte size is the tell. A plain `curl` user agent passes
 through to the origin, as does `Chrome-Lighthouse`.
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/scripts/t3o-gitlab.py" probe https://extensions.typo3.org/
+uv run "${CLAUDE_SKILL_DIR}/scripts/t3o-gitlab.py" probe https://extensions.typo3.org/
 ```
 
 Do not conclude that a crawler is blocked because a `Googlebot` user agent gets
