@@ -292,6 +292,64 @@ these things:
   `ter_rest`'s `ExtensionRepository` and moved its test to EXT:ter's
   domain-layer repository, which the merge request also tested in a file of its
   own. The fix was to move the new case into the moved test and drop the file.
+- **A clean rebase can still leave your hunks on dead code.** When `develop`
+  has merged a change that rewires callers, the class your merge request edits
+  may keep compiling while nothing runs it any more, and no conflict says so.
+  For every production class the merge request touches, list every mention of
+  its short name outside the tests — `use` lines, constructor type hints that
+  the container autowires, `::class` in `Services.yaml` or TCA, `new`. Search
+  the rebased branch, not `develop`: a caller the merge request adds itself
+  exists only there.
+
+  ```bash
+  git -C <worktree of the rebased branch> grep -nw ExtensionVersion HEAD \
+    -- extensions ':!extensions/*/Tests/*'
+  ```
+
+  Read each hit in context. When nothing is left but the class's own
+  definition, the hunk changes code nobody runs: drop it together with its
+  test, and rewrite the commit message and the description, which still claim
+  the old path. On `ter` that grep printed six lines at `1ac0b614` (two `use`
+  lines, three `new`, the definition) and only the definition after `!941`.
+  A name built at runtime (a string passed to `makeInstance()`, a class name
+  read from configuration) does not show up this way; where the class could be
+  reached like that, search for the fully qualified name as a string as well.
+  On `!948` and `!926` (2026-10-20) `!941` had moved the web form onto the
+  domain `VersionService`, so their changes to `Api\ExtensionVersion` rebased
+  without a conflict and no longer did anything.
+- **Read `develop`'s own pipeline before rebasing onto it.** `ter` merges with
+  `merge_method: merge` and runs branch pipelines on the head commit, so a
+  green merge request pipeline says nothing about the merge result. Two merge
+  requests that are each green can break `develop` together, and every branch
+  rebased onto it then inherits the failure. Ask for the pipeline of the
+  commit `develop` points at now, not the newest one of the branch: right
+  after a merge that is still the previous commit's, usually green.
+
+  ```bash
+  api=https://git.typo3.org/api/v4/projects/services%2Ft3o-sites%2Fextensions.typo3.org%2Fter
+  head=$(curl -sS -H "PRIVATE-TOKEN: $GIT_TYPO3_ORG_TOKEN" "$api/repository/branches/develop" \
+    | jq -r '.commit.id // empty')
+  : "${head:?could not read the head of develop}"
+  curl -sS -H "PRIVATE-TOKEN: $GIT_TYPO3_ORG_TOKEN" "$api/pipelines?ref=develop&sha=$head" \
+    | jq -r '.[] | "\(.id) \(.sha[0:8]) \(.status)"'
+  ```
+
+  Only `success` lets the rebase go ahead. No line yet means no pipeline
+  exists for that commit, and `created`, `pending` or `running` means it has
+  not finished: wait in both cases, and do not read an older pipeline in its
+  place. `canceled`, `skipped` or `manual` is no result either: run the
+  pipeline for that commit first. When it is `failed`, fix `develop` in a
+  merge request of its own first, then rebase the rest once that has landed.
+  On 2026-10-20 a test added by `!946` still built `RegisterkeyController`
+  with five arguments after `!941` had raised the constructor to eight;
+  `!957` fixed the test, and the three merge requests rebased in between all
+  went red on it.
+- **Run the local gates before pushing the rebase**, as listed under
+  [Reproducing the gates locally (ter)](#reproducing-the-gates-locally-ter):
+  without `--ignore-platform-reqs` the install stops on a host PHP that lacks
+  `ext-soap` (required by `t3o/ter-core`), and a harness that carries on runs
+  the suite against the previous `vendor/`. A run whose `composer install`
+  failed is no evidence, whatever the tests printed.
 - **A description written back through the API reads back one newline short**
   when the original was fetched with `jq -r`. Drop that one terminal newline
   and compare the rest exactly before concluding that the `PUT` did not apply

@@ -838,5 +838,46 @@
         "Send the patch and the unit tests to the security address; the code speaks for itself."
       ]
     }
+  },
+  {
+    "name": "rebase-after-refactor-dead-code-and-red-develop",
+    "prompt": "A colleague just merged a large refactor into develop on the TER site (git.typo3.org, services/t3o-sites/extensions.typo3.org/ter) that moved the web form onto the shared domain layer. Rebase my three open merge requests onto develop. All three rebase without conflicts. What do I check before I push?",
+    "assertions": [
+      {
+        "type": "content_regex",
+        "value": "(?i)(caller|dead code|no longer (used|called|run))",
+        "description": "Checks whether the touched classes still have a production caller"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)develop.{0,80}pipeline|pipeline.{0,80}develop",
+        "description": "Reads develop's own pipeline before rebasing onto it"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)description",
+        "description": "Rewrites the merge request description for dropped hunks"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)commit message",
+        "description": "Rewrites the commit message for dropped hunks"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)(local (gates|checks|test)|phpstan)",
+        "description": "Runs the local gates before pushing the rebase"
+      }
+    ],
+    "samples": {
+      "passing": "A clean rebase can still leave hunks on dead code: git grep for production callers of every class the merge request touches, outside the tests, and drop hunks on code nothing calls any more, then rewrite the commit message and the description. Before rebasing, read develop's own pipeline for its current head commit: with merge_method merge two green merge requests can break develop together, so fix develop in its own merge request first. Run the local gates before the push, with composer install --ignore-platform-reqs.",
+      "failing": [
+        "No conflicts, so just force-push all three and wait for their pipelines.",
+        "Squash each branch into one commit and push, the reviewers will catch anything else.",
+        "Grep for production callers and drop dead hunks, update the merge request description, read the develop pipeline and run the local gates, then push.",
+        "Grep for callers of the touched classes, drop dead hunks and fix the commit message, check the develop pipeline, then push without running anything locally.",
+        "Grep the rebased branch for callers and drop dead hunks, rewrite the commit message and the description, read the develop pipeline, run composer install --ignore-platform-reqs, then push."
+      ]
+    }
   }
 ]
