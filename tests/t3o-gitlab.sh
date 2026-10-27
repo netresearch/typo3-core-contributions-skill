@@ -430,5 +430,196 @@ for bad in "c/d#²" "c/d#١٢٣" "c/d#" "#3"; do
 done
 rm -rf "$empty_home"
 
+out="$(python3 "$SCRIPT" mr --help 2>&1)"
+for sub in "list" "discussions"; do
+    case "$out" in
+        *"$sub"*) echo "  ok   mr --help lists $sub" ;;
+        *) echo "  FAIL mr --help does not list $sub"; fail=1 ;;
+    esac
+done
+out="$(python3 "$SCRIPT" pipeline --help 2>&1)"
+case "$out" in
+    *"failures"*) echo "  ok   pipeline --help lists failures" ;;
+    *) echo "  FAIL pipeline --help does not list failures"; fail=1 ;;
+esac
+
+# trace_summary: a GitLab trace carries a timestamp, a stream id and ANSI
+# colour on every line. What a failing PHP gate names - PHPUnit's numbered
+# defects and summary, PHPStan's file header and count - must come out bare,
+# each once, although PHPUnit prints a defect in the list and in the detail.
+out="$(python3 - "$SCRIPT" 2>&1 <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("t3o", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+p = "2026-10-20T12:50:20.698079Z 01O "
+trace = "\n".join([
+    p + "section_start:1:step_script",
+    p + "Installing dependencies",
+    p + "1) T3o\\TerFe2\\Tests\\Unit\\Controller\\AdminTest::adminActionHands",
+    p + "ArgumentCountError: Too few arguments",
+    p + "1) T3o\\TerFe2\\Tests\\Unit\\Controller\\AdminTest::adminActionHands",
+    p + "\x1b[37;41mERRORS!\x1b[0m",
+    p + "Tests: 1083, Assertions: 1978, Errors: 1, Deprecations: 4.",
+    p + "  Line   ter_fe2/Tests/Unit/Controller/AdminTest.php       ",
+    p + " [ERROR] Found 2 errors",
+])
+for line in mod.trace_summary(trace):
+    print(line)
+PY
+)"
+expected='1) T3o\TerFe2\Tests\Unit\Controller\AdminTest::adminActionHands
+ERRORS!
+Tests: 1083, Assertions: 1978, Errors: 1, Deprecations: 4.
+Line   ter_fe2/Tests/Unit/Controller/AdminTest.php
+[ERROR] Found 2 errors'
+check "trace_summary keeps the failure lines, bare and once" "$expected" "$out"
+
+# A failure of another kind names none of those lines; the tail must come
+# back instead of an empty answer.
+out="$(python3 - "$SCRIPT" 2>&1 <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("t3o", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+trace = "\n".join(f"2026-10-20T12:50:20.1Z 01E line {n}" for n in range(40))
+summary = mod.trace_summary(trace)
+print(len(summary), summary[0], summary[-1])
+PY
+)"
+check "trace_summary falls back to the last lines" "15 line 25 line 39" "$out"
+
+# Infection runs PHPUnit before mutating and prints its output indented
+# (ter pipeline 111826, test:mutation): the indented lines count too.
+out="$(python3 - "$SCRIPT" 2>&1 <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("t3o", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+p = "2026-10-20T12:50:20.1Z 01O "
+trace = "\n".join([
+    p + "           There was 1 error:                       ",
+    p + "           1) T3o\\X\\AdminTest::adminActionHands",
+    p + "           ERRORS!",
+    p + "           Tests: 574, Assertions: 1070, Errors: 1, PHPUnit Notices: 52.",
+] + [p + f"tail {n}" for n in range(20)])
+for line in mod.trace_summary(trace):
+    print(line)
+PY
+)"
+expected='There was 1 error:
+1) T3o\X\AdminTest::adminActionHands
+ERRORS!
+Tests: 574, Assertions: 1070, Errors: 1, PHPUnit Notices: 52.'
+check "trace_summary reads Infection's indented PHPUnit output" "$expected" "$out"
+
+# note_lines: system notes and the excluded author are left out, an open
+# review thread says so, and a diff note names file and line.
+out="$(python3 - "$SCRIPT" 2>&1 <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("t3o", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+discussions = [
+    {"notes": [{"system": True, "author": {"username": "bot"}, "body": "added 1 commit"}]},
+    {"notes": [{"system": False, "author": {"username": "me"}, "body": "rebased"}]},
+    {"notes": [{
+        "system": False, "author": {"username": "reviewer"},
+        "created_at": "2026-10-05T06:54:10.604Z", "resolvable": True, "resolved": False,
+        "position": {"new_path": "a/B.php", "new_line": 89},
+        "body": "please\nfix",
+    }]},
+]
+discussions.append({"notes": [{
+    "system": False, "author": {"username": "reviewer"},
+    "created_at": "2026-10-05T07:00:00Z",
+    "position": {"new_path": "a/B.php", "old_path": "a/B.php", "old_line": 12, "new_line": None},
+    "body": "why removed",
+}]})
+for line in mod.note_lines(discussions, "me"):
+    print(line)
+print(len(mod.note_lines(discussions, None)))
+PY
+)"
+expected='reviewer 2026-10-05T06:54 UNRESOLVED a/B.php:89: please fix
+reviewer 2026-10-05T07:00 a/B.php:12: why removed
+3'
+check "note_lines drops system notes and the excluded author" "$expected" "$out"
+
+# Notes and traces are written by others: an escape sequence in one must not
+# reach the reader's terminal. A colour code goes whole, an OSC title change
+# and a bare BEL lose their control characters, plain text stays.
+out="$(python3 - "$SCRIPT" 2>&1 <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("t3o", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+note = {"system": False, "author": {"username": "x\x1b]0;owned\x07"},
+        "body": "\x1b[31mred\x1b[0m ok\x1b[2J​"}
+line = mod.note_lines([{"notes": [note]}], None)[0]
+print(repr(line))
+print(any(ord(c) < 32 or 0x7f <= ord(c) < 0xa0 for c in line))
+PY
+)"
+expected="'x]0;owned : red ok'
+False"
+check "note_lines prints no control characters" "$expected" "$out"
+
+# mr list: author and state reach the query, and a full page is reported as
+# a possible truncation rather than as the whole list.
+out="$(python3 - "$SCRIPT" 2>&1 <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("t3o", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+seen = []
+def fake_call(path, method="GET", body=None):
+    seen.append(path)
+    return [{"iid": n, "state": "merged", "draft": False, "sha": "abcdef0123",
+             "detailed_merge_status": "not_open", "source_branch": "b", "title": "t"}
+            for n in range(100)]
+mod.call = fake_call
+mod.cmd_mr_list(mod.build_parser().parse_args(
+    ["mr", "list", "a/b", "--author", "me", "--state", "merged"]))
+print(seen[0])
+PY
+)"
+case "$out" in
+    *"/projects/a%2Fb/merge_requests?state=merged&per_page=100&author_username=me"*)
+        echo "  ok   mr list sends state and author" ;;
+    *) echo "  FAIL mr list query wrong: $out"; fail=1 ;;
+esac
+case "$out" in
+    *"WARNING 100 merge requests is a full page"*) echo "  ok   mr list warns on a full page" ;;
+    *) echo "  FAIL mr list did not warn on a full page: $out"; fail=1 ;;
+esac
+
+# pipeline failures: only failed jobs are named, and their trace is fetched
+# as text - json.load on a trace would raise.
+out="$(python3 - "$SCRIPT" 2>&1 <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("t3o", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+def fake_call(path, method="GET", body=None, raw=False):
+    if path.endswith("/trace"):
+        print(f"trace raw={raw} {path}")
+        return "ERRORS!\nTests: 3, Assertions: 3, Errors: 1."
+    # GitLab must filter before it pages: a failed job on page two of all
+    # jobs would otherwise be missed.
+    if "scope=failed" not in path:
+        print(f"jobs requested without scope=failed: {path}")
+    return [{"id": 7, "name": "test:unit\x1b]0;x\x07", "status": "failed", "web_url": "u7"},
+            {"id": 8, "name": "test:php", "status": "success", "web_url": "u8"}]
+mod.call = fake_call
+mod.cmd_pipeline_failures(mod.build_parser().parse_args(["pipeline", "failures", "a/b", "--id", "5"]))
+PY
+)"
+expected='test:unit]0;x u7
+trace raw=True /projects/a%2Fb/jobs/7/trace
+  ERRORS!
+  Tests: 3, Assertions: 3, Errors: 1.'
+check "pipeline failures reads failed jobs' traces as text" "$expected" "$out"
+
 [[ "$fail" -eq 0 ]] && echo "  all checks passed"
 exit "$fail"

@@ -109,9 +109,32 @@ branch pipelines (`source: push`) whose `sha` is the head commit; a project
 running merged-results pipelines would carry the merge commit's sha there and
 never match.
 
+Three read commands cover what a rebase-and-review round otherwise does by
+hand (one session on 2026-10-20 sent 37 hand-written API calls next to 19 of
+the script's):
+
+- `mr list <project> --author <user> [--state opened|merged|closed|all]` —
+  one line per merge request with draft, sha, `detailed_merge_status` and
+  branch. `unchecked` or `checking` there only means GitLab has not
+  recomputed the status since the last push or target move — not yet a
+  verdict either way. `mr show` on that merge request triggers the check: on
+  `ter` `!948` went from `unchecked` through `checking` to `mergeable` within
+  20 seconds of one `mr show` (2026-10-27).
+- `mr discussions <project> <iid> --exclude-author <you>` — the human notes,
+  system notes left out, with `UNRESOLVED` on an open thread and `file:line`
+  on a diff note. With your own name excluded, "did anyone else say
+  anything?" comes back as `no notes from anyone but <you>`.
+- `pipeline failures <project> --id <pipeline>` — every failed job with the
+  lines of its trace that name the failure: PHPUnit's numbered defects and
+  summary, PHPStan's file headers and count; the last lines when none of
+  those match. Infection wraps PHPUnit's output, so for `test:mutation` the
+  count line is what names it.
+
+A full page of 100 is reported as a possible truncation, not as the count.
+
 Mind what it still does **not** wrap: closing or reopening an MR
-(`state_event`), merging, and reading discussions. Whenever you do fall back to
-curl, read the field back afterwards — the PUT answers `200` either way.
+(`state_event`) and merging. Whenever you do fall back to curl, read the
+field back afterwards — the PUT answers `200` either way.
 
 ### Which transport answers what
 
