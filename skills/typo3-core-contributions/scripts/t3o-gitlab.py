@@ -546,9 +546,13 @@ def note_author(note: dict) -> str:
 def note_line(note: dict) -> str:
     """One note as a line: author, time, thread state, diff position, body."""
     position = note.get("position") or {}
-    where = position.get("new_path") or ""
-    if where and position.get("new_line"):
-        where = f"{where}:{position['new_line']}"
+    # A note on a removed line carries only old_path and old_line.
+    if position.get("new_line"):
+        where = f"{position.get('new_path') or ''}:{position['new_line']}"
+    elif position.get("old_line"):
+        where = f"{position.get('old_path') or ''}:{position['old_line']}"
+    else:
+        where = position.get("new_path") or position.get("old_path") or ""
     state = ""
     if note.get("resolvable"):
         state = " resolved" if note.get("resolved") else " UNRESOLVED"
@@ -675,14 +679,28 @@ NO_PIPELINE_HINT = (
 )
 
 
-def print_failed_jobs(project: str, pipeline_id: Any) -> None:
+def failed_jobs(project: str, pipeline_id: Any) -> list[dict]:
+    """The failed jobs of a pipeline, filtered by GitLab before it pages.
+
+    Filtering one page of all jobs here would miss a failed job on page two
+    and report a red pipeline as having none.
+    """
     jobs = call(
         f"/projects/{encoded(project)}/pipelines/"
-        f"{numeric(pipeline_id, 'pipeline id')}/jobs?per_page=100"
+        f"{numeric(pipeline_id, 'pipeline id')}/jobs?scope=failed&per_page={PAGE_SIZE}"
     )
-    for job in jobs if isinstance(jobs, list) else []:
-        if job.get("status") == "failed":
-            print(f"  failed: {job['name']} {job['web_url']}")
+    failed = [
+        job
+        for job in (jobs if isinstance(jobs, list) else [])
+        if job.get("status") == "failed"
+    ]
+    warn_if_truncated(failed, "failed jobs")
+    return failed
+
+
+def print_failed_jobs(project: str, pipeline_id: Any) -> None:
+    for job in failed_jobs(project, pipeline_id):
+        print(f"  failed: {job['name']} {job['web_url']}")
 
 
 def cmd_pipeline_status(args: argparse.Namespace) -> None:
@@ -754,15 +772,7 @@ def trace_summary(trace: str) -> list[str]:
 
 def cmd_pipeline_failures(args: argparse.Namespace) -> None:
     """Each failed job of a pipeline with the lines of its trace that say why."""
-    jobs = call(
-        f"/projects/{encoded(args.project)}/pipelines/"
-        f"{numeric(args.id, 'pipeline id')}/jobs?per_page={PAGE_SIZE}"
-    )
-    failed = [
-        job
-        for job in (jobs if isinstance(jobs, list) else [])
-        if job.get("status") == "failed"
-    ]
+    failed = failed_jobs(args.project, args.id)
     if not failed:
         print(f"no failed jobs in pipeline {args.id}")
         return

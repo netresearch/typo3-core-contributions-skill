@@ -530,13 +530,20 @@ discussions = [
         "body": "please\nfix",
     }]},
 ]
+discussions.append({"notes": [{
+    "system": False, "author": {"username": "reviewer"},
+    "created_at": "2026-10-05T07:00:00Z",
+    "position": {"new_path": "a/B.php", "old_path": "a/B.php", "old_line": 12, "new_line": None},
+    "body": "why removed",
+}]})
 for line in mod.note_lines(discussions, "me"):
     print(line)
 print(len(mod.note_lines(discussions, None)))
 PY
 )"
 expected='reviewer 2026-10-05T06:54 UNRESOLVED a/B.php:89: please fix
-2'
+reviewer 2026-10-05T07:00 a/B.php:12: why removed
+3'
 check "note_lines drops system notes and the excluded author" "$expected" "$out"
 
 # Notes and traces are written by others: an escape sequence in one must not
@@ -598,6 +605,10 @@ def fake_call(path, method="GET", body=None, raw=False):
     if path.endswith("/trace"):
         print(f"trace raw={raw} {path}")
         return "ERRORS!\nTests: 3, Assertions: 3, Errors: 1."
+    # GitLab must filter before it pages: a failed job on page two of all
+    # jobs would otherwise be missed.
+    if "scope=failed" not in path:
+        print(f"jobs requested without scope=failed: {path}")
     return [{"id": 7, "name": "test:unit", "status": "failed", "web_url": "u7"},
             {"id": 8, "name": "test:php", "status": "success", "web_url": "u8"}]
 mod.call = fake_call
