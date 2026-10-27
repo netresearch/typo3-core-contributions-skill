@@ -700,7 +700,7 @@ def failed_jobs(project: str, pipeline_id: Any) -> list[dict]:
 
 def print_failed_jobs(project: str, pipeline_id: Any) -> None:
     for job in failed_jobs(project, pipeline_id):
-        print(f"  failed: {job['name']} {job['web_url']}")
+        print(printable(f"  failed: {job['name']} {job['web_url']}"))
 
 
 def cmd_pipeline_status(args: argparse.Namespace) -> None:
@@ -777,7 +777,8 @@ def cmd_pipeline_failures(args: argparse.Namespace) -> None:
         print(f"no failed jobs in pipeline {args.id}")
         return
     for job in failed:
-        print(f"{job['name']} {job['web_url']}")
+        # A job name is whatever the project's CI configuration says.
+        print(printable(f"{job['name']} {job['web_url']}"))
         trace = call(
             f"/projects/{encoded(args.project)}/jobs/{numeric(job['id'], 'job id')}/trace",
             raw=True,

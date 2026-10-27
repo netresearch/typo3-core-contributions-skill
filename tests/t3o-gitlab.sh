@@ -609,13 +609,13 @@ def fake_call(path, method="GET", body=None, raw=False):
     # jobs would otherwise be missed.
     if "scope=failed" not in path:
         print(f"jobs requested without scope=failed: {path}")
-    return [{"id": 7, "name": "test:unit", "status": "failed", "web_url": "u7"},
+    return [{"id": 7, "name": "test:unit\x1b]0;x\x07", "status": "failed", "web_url": "u7"},
             {"id": 8, "name": "test:php", "status": "success", "web_url": "u8"}]
 mod.call = fake_call
 mod.cmd_pipeline_failures(mod.build_parser().parse_args(["pipeline", "failures", "a/b", "--id", "5"]))
 PY
 )"
-expected='test:unit u7
+expected='test:unit]0;x u7
 trace raw=True /projects/a%2Fb/jobs/7/trace
   ERRORS!
   Tests: 3, Assertions: 3, Errors: 1.'
