@@ -865,7 +865,7 @@
       },
       {
         "type": "content_regex",
-        "value": "(?i)(local (gates|checks|test)|phpstan|composer install)",
+        "value": "(?i)(local (gates|checks|test)|phpstan)",
         "description": "Runs the local gates before pushing the rebase"
       }
     ],
@@ -875,7 +875,8 @@
         "No conflicts, so just force-push all three and wait for their pipelines.",
         "Squash each branch into one commit and push, the reviewers will catch anything else.",
         "Grep for production callers and drop dead hunks, update the merge request description, read the develop pipeline and run the local gates, then push.",
-        "Grep for callers of the touched classes, drop dead hunks and fix the commit message, check the develop pipeline, then push without running anything locally."
+        "Grep for callers of the touched classes, drop dead hunks and fix the commit message, check the develop pipeline, then push without running anything locally.",
+        "Grep the rebased branch for callers and drop dead hunks, rewrite the commit message and the description, read the develop pipeline, run composer install --ignore-platform-reqs, then push."
       ]
     }
   }

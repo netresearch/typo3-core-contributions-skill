@@ -297,10 +297,12 @@ these things:
   may keep compiling while nothing runs it any more, and no conflict says so.
   For every production class the merge request touches, list every mention of
   its short name outside the tests — `use` lines, constructor type hints that
-  the container autowires, `::class` in `Services.yaml` or TCA, `new`:
+  the container autowires, `::class` in `Services.yaml` or TCA, `new`. Search
+  the rebased branch, not `develop`: a caller the merge request adds itself
+  exists only there.
 
   ```bash
-  git grep -nw ExtensionVersion origin/develop \
+  git -C <worktree of the rebased branch> grep -nw ExtensionVersion HEAD \
     -- extensions ':!extensions/*/Tests/*'
   ```
 
@@ -312,10 +314,9 @@ these things:
   A name built at runtime (a string passed to `makeInstance()`, a class name
   read from configuration) does not show up this way; where the class could be
   reached like that, search for the fully qualified name as a string as well.
-  On `!948` and `!926` (2026-10-20) `!941` had moved
-  the web form onto the domain `VersionService`, so their changes to
-  `Api\ExtensionVersion` rebased without a conflict and no longer did
-  anything.
+  On `!948` and `!926` (2026-10-20) `!941` had moved the web form onto the
+  domain `VersionService`, so their changes to `Api\ExtensionVersion` rebased
+  without a conflict and no longer did anything.
 - **Read `develop`'s own pipeline before rebasing onto it.** `ter` merges with
   `merge_method: merge` and runs branch pipelines on the head commit, so a
   green merge request pipeline says nothing about the merge result. Two merge
@@ -333,10 +334,11 @@ these things:
     | jq -r '.[] | "\(.id) \(.sha[0:8]) \(.status)"'
   ```
 
-  No line yet means no pipeline exists for that commit: wait, do not read
-  an older one in its place. When it is red, fix `develop` in a merge request
-  of its own first, then
-  rebase the rest once that has landed. On 2026-10-20 a test added by `!946`
+  Only `success` lets the rebase go ahead. No line yet means no pipeline
+  exists for that commit, and `created`, `pending` or `running` means it has
+  not finished: wait in both cases, and do not read an older pipeline in its
+  place. When it is `failed`, fix `develop` in a merge request of its own
+  first, then rebase the rest once that has landed. On 2026-10-20 a test added by `!946`
   still built `RegisterkeyController` with five arguments after `!941` had
   raised the constructor to eight; `!957` fixed the test, and the three
   merge requests rebased in between all went red on it.
