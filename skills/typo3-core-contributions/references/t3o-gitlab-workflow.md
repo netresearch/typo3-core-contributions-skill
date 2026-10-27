@@ -295,17 +295,24 @@ these things:
 - **A clean rebase can still leave your hunks on dead code.** When `develop`
   has merged a change that rewires callers, the class your merge request edits
   may keep compiling while nothing runs it any more, and no conflict says so.
-  For every production class the merge request touches, look for a caller
-  outside the tests:
+  For every production class the merge request touches, list every mention of
+  its short name outside the tests — `use` lines, constructor type hints that
+  the container autowires, `::class` in `Services.yaml` or TCA, `new`:
 
   ```bash
-  git grep -nE 'new ExtensionVersion\(|ExtensionVersion::' origin/develop \
+  git grep -nw ExtensionVersion origin/develop \
     -- extensions ':!extensions/*/Tests/*'
   ```
 
-  An empty answer means the hunk changes code nobody runs: drop it together
-  with its test, and rewrite the commit message and the description, which
-  still claim the old path. On `!948` and `!926` (2026-10-20) `!941` had moved
+  Read each hit in context. When nothing is left but the class's own
+  definition, the hunk changes code nobody runs: drop it together with its
+  test, and rewrite the commit message and the description, which still claim
+  the old path. On `ter` that grep printed six lines at `1ac0b614` (two `use`
+  lines, three `new`, the definition) and only the definition after `!941`.
+  A name built at runtime (a string passed to `makeInstance()`, a class name
+  read from configuration) does not show up this way; where the class could be
+  reached like that, search for the fully qualified name as a string as well.
+  On `!948` and `!926` (2026-10-20) `!941` had moved
   the web form onto the domain `VersionService`, so their changes to
   `Api\ExtensionVersion` rebased without a conflict and no longer did
   anything.
@@ -313,15 +320,22 @@ these things:
   `merge_method: merge` and runs branch pipelines on the head commit, so a
   green merge request pipeline says nothing about the merge result. Two merge
   requests that are each green can break `develop` together, and every branch
-  rebased onto it then inherits the failure:
+  rebased onto it then inherits the failure. Ask for the pipeline of the
+  commit `develop` points at now, not the newest one of the branch: right
+  after a merge that is still the previous commit's, usually green.
 
   ```bash
-  curl -sS -H "PRIVATE-TOKEN: $GIT_TYPO3_ORG_TOKEN" \
-    "https://git.typo3.org/api/v4/projects/services%2Ft3o-sites%2Fextensions.typo3.org%2Fter/pipelines?ref=develop&per_page=3" \
+  api=https://git.typo3.org/api/v4/projects/services%2Ft3o-sites%2Fextensions.typo3.org%2Fter
+  head=$(curl -sS -H "PRIVATE-TOKEN: $GIT_TYPO3_ORG_TOKEN" "$api/repository/branches/develop" \
+    | jq -r '.commit.id // empty')
+  : "${head:?could not read the head of develop}"
+  curl -sS -H "PRIVATE-TOKEN: $GIT_TYPO3_ORG_TOKEN" "$api/pipelines?ref=develop&sha=$head" \
     | jq -r '.[] | "\(.id) \(.sha[0:8]) \(.status)"'
   ```
 
-  When it is red, fix `develop` in a merge request of its own first, then
+  No line yet means no pipeline exists for that commit: wait, do not read
+  an older one in its place. When it is red, fix `develop` in a merge request
+  of its own first, then
   rebase the rest once that has landed. On 2026-10-20 a test added by `!946`
   still built `RegisterkeyController` with five arguments after `!941` had
   raised the constructor to eight; `!957` fixed the test, and the three
@@ -330,8 +344,8 @@ these things:
   [Reproducing the gates locally (ter)](#reproducing-the-gates-locally-ter):
   without `--ignore-platform-reqs` the install stops on a host PHP that lacks
   `ext-soap` (required by `t3o/ter-core`), and a harness that carries on runs
-  the suite against the previous `vendor/`. A run whose `composer install` failed is no
-  evidence, whatever the tests printed.
+  the suite against the previous `vendor/`. A run whose `composer install`
+  failed is no evidence, whatever the tests printed.
 - **A description written back through the API reads back one newline short**
   when the original was fetched with `jq -r`. Drop that one terminal newline
   and compare the rest exactly before concluding that the `PUT` did not apply

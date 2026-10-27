@@ -855,15 +855,27 @@
       },
       {
         "type": "content_regex",
-        "value": "(?i)(description|commit message)",
-        "description": "Rewrites description and commit message for dropped hunks"
+        "value": "(?i)description",
+        "description": "Rewrites the merge request description for dropped hunks"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)commit message",
+        "description": "Rewrites the commit message for dropped hunks"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)(local (gates|checks|test)|phpstan|composer install)",
+        "description": "Runs the local gates before pushing the rebase"
       }
     ],
     "samples": {
-      "passing": "A clean rebase can still leave hunks on dead code: git grep for production callers of every class the merge request touches, outside the tests, and drop hunks on code nothing calls any more, then rewrite the commit message and the description. Before rebasing, read develop's own pipeline: with merge_method merge two green merge requests can break develop together, so fix develop in its own merge request first.",
+      "passing": "A clean rebase can still leave hunks on dead code: git grep for production callers of every class the merge request touches, outside the tests, and drop hunks on code nothing calls any more, then rewrite the commit message and the description. Before rebasing, read develop's own pipeline for its current head commit: with merge_method merge two green merge requests can break develop together, so fix develop in its own merge request first. Run the local gates before the push, with composer install --ignore-platform-reqs.",
       "failing": [
         "No conflicts, so just force-push all three and wait for their pipelines.",
-        "Squash each branch into one commit and push, the reviewers will catch anything else."
+        "Squash each branch into one commit and push, the reviewers will catch anything else.",
+        "Grep for production callers and drop dead hunks, update the merge request description, read the develop pipeline and run the local gates, then push.",
+        "Grep for callers of the touched classes, drop dead hunks and fix the commit message, check the develop pipeline, then push without running anything locally."
       ]
     }
   }
