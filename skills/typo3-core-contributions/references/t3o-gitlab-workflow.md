@@ -292,6 +292,46 @@ these things:
   `ter_rest`'s `ExtensionRepository` and moved its test to EXT:ter's
   domain-layer repository, which the merge request also tested in a file of its
   own. The fix was to move the new case into the moved test and drop the file.
+- **A clean rebase can still leave your hunks on dead code.** When `develop`
+  has merged a change that rewires callers, the class your merge request edits
+  may keep compiling while nothing runs it any more, and no conflict says so.
+  For every production class the merge request touches, look for a caller
+  outside the tests:
+
+  ```bash
+  git grep -nE 'new ExtensionVersion\(|ExtensionVersion::' origin/develop \
+    -- extensions ':!extensions/*/Tests/*'
+  ```
+
+  An empty answer means the hunk changes code nobody runs: drop it together
+  with its test, and rewrite the commit message and the description, which
+  still claim the old path. On `!948` and `!926` (2026-10-20) `!941` had moved
+  the web form onto the domain `VersionService`, so their changes to
+  `Api\ExtensionVersion` rebased without a conflict and no longer did
+  anything.
+- **Read `develop`'s own pipeline before rebasing onto it.** `ter` merges with
+  `merge_method: merge` and runs branch pipelines on the head commit, so a
+  green merge request pipeline says nothing about the merge result. Two merge
+  requests that are each green can break `develop` together, and every branch
+  rebased onto it then inherits the failure:
+
+  ```bash
+  curl -sS -H "PRIVATE-TOKEN: $GIT_TYPO3_ORG_TOKEN" \
+    "https://git.typo3.org/api/v4/projects/services%2Ft3o-sites%2Fextensions.typo3.org%2Fter/pipelines?ref=develop&per_page=3" \
+    | jq -r '.[] | "\(.id) \(.sha[0:8]) \(.status)"'
+  ```
+
+  When it is red, fix `develop` in a merge request of its own first, then
+  rebase the rest once that has landed. On 2026-10-20 a test added by `!946`
+  still built `RegisterkeyController` with five arguments after `!941` had
+  raised the constructor to eight; `!957` fixed the test, and the three
+  merge requests rebased in between all went red on it.
+- **Run the local gates before pushing the rebase**, as listed under
+  [Reproducing the gates locally (ter)](#reproducing-the-gates-locally-ter):
+  without `--ignore-platform-reqs` the install stops on a host PHP that lacks
+  `ext-soap` (required by `t3o/ter-core`), and a harness that carries on runs
+  the suite against the previous `vendor/`. A run whose `composer install` failed is no
+  evidence, whatever the tests printed.
 - **A description written back through the API reads back one newline short**
   when the original was fetched with `jq -r`. Drop that one terminal newline
   and compare the rest exactly before concluding that the `PUT` did not apply

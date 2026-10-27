@@ -838,5 +838,33 @@
         "Send the patch and the unit tests to the security address; the code speaks for itself."
       ]
     }
+  },
+  {
+    "name": "rebase-after-refactor-dead-code-and-red-develop",
+    "prompt": "A colleague just merged a large refactor into develop on the TER site (git.typo3.org, services/t3o-sites/extensions.typo3.org/ter) that moved the web form onto the shared domain layer. Rebase my three open merge requests onto develop. All three rebase without conflicts. What do I check before I push?",
+    "assertions": [
+      {
+        "type": "content_regex",
+        "value": "(?i)(caller|dead code|no longer (used|called|run))",
+        "description": "Checks whether the touched classes still have a production caller"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)develop.{0,80}pipeline|pipeline.{0,80}develop",
+        "description": "Reads develop's own pipeline before rebasing onto it"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)(description|commit message)",
+        "description": "Rewrites description and commit message for dropped hunks"
+      }
+    ],
+    "samples": {
+      "passing": "A clean rebase can still leave hunks on dead code: git grep for production callers of every class the merge request touches, outside the tests, and drop hunks on code nothing calls any more, then rewrite the commit message and the description. Before rebasing, read develop's own pipeline: with merge_method merge two green merge requests can break develop together, so fix develop in its own merge request first.",
+      "failing": [
+        "No conflicts, so just force-push all three and wait for their pipelines.",
+        "Squash each branch into one commit and push, the reviewers will catch anything else."
+      ]
+    }
   }
 ]

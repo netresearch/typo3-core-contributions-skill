@@ -63,6 +63,7 @@ Read ALL failing job logs, never guess; fix everything in one patchset. Locally:
 | Fix email mismatch | `GIT_COMMITTER_EMAIL="registered@email" git commit --amend --no-edit` |
 | Forge API | `${CLAUDE_SKILL_DIR}/scripts/create-forge-issue.sh`, `references/forge-api.md` |
 | t3o GitLab | `uv run ${CLAUDE_SKILL_DIR}/scripts/t3o-gitlab.py access\|issue\|note\|mr create\|mr update\|mr show\|pipeline status\|pipeline wait\|link\|probe` |
+| ter gates locally, no Docker | `references/t3o-gitlab-workflow.md` § Reproducing the gates locally (ter) |
 
 ## References
 
