@@ -337,11 +337,13 @@ these things:
   Only `success` lets the rebase go ahead. No line yet means no pipeline
   exists for that commit, and `created`, `pending` or `running` means it has
   not finished: wait in both cases, and do not read an older pipeline in its
-  place. When it is `failed`, fix `develop` in a merge request of its own
-  first, then rebase the rest once that has landed. On 2026-10-20 a test added by `!946`
-  still built `RegisterkeyController` with five arguments after `!941` had
-  raised the constructor to eight; `!957` fixed the test, and the three
-  merge requests rebased in between all went red on it.
+  place. `canceled`, `skipped` or `manual` is no result either: run the
+  pipeline for that commit first. When it is `failed`, fix `develop` in a
+  merge request of its own first, then rebase the rest once that has landed.
+  On 2026-10-20 a test added by `!946` still built `RegisterkeyController`
+  with five arguments after `!941` had raised the constructor to eight;
+  `!957` fixed the test, and the three merge requests rebased in between all
+  went red on it.
 - **Run the local gates before pushing the rebase**, as listed under
   [Reproducing the gates locally (ter)](#reproducing-the-gates-locally-ter):
   without `--ignore-platform-reqs` the install stops on a host PHP that lacks
