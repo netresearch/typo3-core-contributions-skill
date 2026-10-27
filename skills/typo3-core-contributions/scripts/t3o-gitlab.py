@@ -13,8 +13,10 @@ Covers the operations that are easy to get wrong by hand: reading your real
 access level before planning, writing issues and merge requests with a
 read-back check (GitLab answers 200 and silently drops fields you may not set),
 keeping an open merge request current (title, description, labels, draft
-state), reading its merge gate and awaiting its pipeline, and
-fingerprinting a live response from a site behind the Anubis bot wall.
+state), reading its merge gate and awaiting its pipeline, listing merge
+requests and reading their review comments, naming what a failed pipeline's
+jobs failed on, and fingerprinting a live response from a site behind the
+Anubis bot wall.
 
 Not for TYPO3 Core patches - those go to Gerrit, see references/gerrit-workflow.md.
 """
@@ -24,8 +26,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -169,10 +173,12 @@ def call(
     body: dict | None = None,
     timeout: float | None = None,
     retry_transient: bool = False,
+    raw: bool = False,
 ) -> Any:
     """One API request. `retry_transient` makes a 502/503/504 raise
     TransientHTTPError for a polling caller to absorb; otherwise every HTTP
-    error ends the run with its status and a readable detail."""
+    error ends the run with its status and a readable detail. `raw` returns
+    the body as text, for the endpoints that answer plain text (a job trace)."""
     if not path.startswith("/") or "://" in path:
         sys.exit(f"Refusing suspicious API path: {path}")
     request = https_request(
@@ -183,6 +189,8 @@ def call(
     )
     try:
         with open_checked(request, timeout, follow_redirects=False) as response:
+            if raw:
+                return response.read().decode(errors="replace")
             return json.load(response)
     except urllib.error.HTTPError as error:
         detail = error_detail(error)
@@ -470,6 +478,123 @@ def cmd_mr_show(args: argparse.Namespace) -> None:
     print(f"  {merge_request['web_url']}")
 
 
+PAGE_SIZE = 100
+# A colour code as a job trace carries it: removed whole, so its parameters do
+# not survive as text once the escape character itself is dropped.
+ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+
+def printable(text: str) -> str:
+    """Remote text made safe to print to a terminal.
+
+    A note, a title or a job trace is written by someone else, and an escape
+    sequence in it would drive the reader's terminal. Colour codes go whole;
+    every other control or format character is dropped one code point at a
+    time - a regex over a character class misses the ones nobody listed.
+    """
+    text = ANSI.sub("", text)
+    return "".join(
+        char
+        for char in text
+        if char == "\t" or not unicodedata.category(char).startswith("C")
+    )
+
+
+def warn_if_truncated(items: list, what: str) -> None:
+    """A full page is a truncation tell, not a count."""
+    if len(items) >= PAGE_SIZE:
+        print(
+            f"  WARNING {len(items)} {what} is a full page - there may be more.",
+            file=sys.stderr,
+        )
+
+
+def cmd_mr_list(args: argparse.Namespace) -> None:
+    """Merge requests of a project, one line each, with the merge gate field.
+
+    `detailed_merge_status` is lazy: `unchecked` or `checking` right after a
+    push or a target-branch move means GitLab has not recomputed it yet, not
+    that something blocks the merge.
+    """
+    query = {"state": args.state, "per_page": str(PAGE_SIZE)}
+    if args.author:
+        query["author_username"] = args.author
+    path = (
+        f"/projects/{encoded(args.project)}/merge_requests?"
+        f"{urllib.parse.urlencode(query)}"
+    )
+    merge_requests = call(path)
+    merge_requests = merge_requests if isinstance(merge_requests, list) else []
+    for merge_request in merge_requests:
+        print(
+            f"!{merge_request['iid']} {merge_request['state']} "
+            f"draft={merge_request['draft']} "
+            f"sha={str(merge_request['sha'])[:8]} "
+            f"{merge_request.get('detailed_merge_status')} "
+            f"{printable(str(merge_request['source_branch']))} - "
+            f"{printable(str(merge_request['title']))}"
+        )
+    if not merge_requests:
+        print(f"no {args.state} merge requests")
+    warn_if_truncated(merge_requests, "merge requests")
+
+
+def note_author(note: dict) -> str:
+    return (note.get("author") or {}).get("username", "?")
+
+
+def note_line(note: dict) -> str:
+    """One note as a line: author, time, thread state, diff position, body."""
+    position = note.get("position") or {}
+    where = position.get("new_path") or ""
+    if where and position.get("new_line"):
+        where = f"{where}:{position['new_line']}"
+    state = ""
+    if note.get("resolvable"):
+        state = " resolved" if note.get("resolved") else " UNRESOLVED"
+    body = " ".join(str(note.get("body", "")).split())
+    return printable(
+        f"{note_author(note)} {str(note.get('created_at', ''))[:16]}{state}"
+        f"{' ' + where if where else ''}: {body[:300]}"
+    )
+
+
+def note_lines(discussions: list, exclude_author: str | None) -> list[str]:
+    """The human notes of a discussion list, system notes left out.
+
+    `--exclude-author` drops your own notes, so "did anyone else say
+    anything?" is answered by an empty list instead of a scroll through your
+    own status comments.
+    """
+    notes = (
+        note
+        for discussion in discussions
+        for note in discussion.get("notes") or []
+        if not note.get("system")
+    )
+    return [
+        note_line(note)
+        for note in notes
+        if not (exclude_author and note_author(note) == exclude_author)
+    ]
+
+
+def cmd_mr_discussions(args: argparse.Namespace) -> None:
+    """Review comments of an MR. Anonymous reads of this endpoint answer 401,
+    so it always goes through the token."""
+    discussions = call(
+        f"{mr_path(args.project, args.iid)}/discussions?per_page={PAGE_SIZE}"
+    )
+    discussions = discussions if isinstance(discussions, list) else []
+    lines = note_lines(discussions, args.exclude_author)
+    for line in lines:
+        print(line)
+    if not lines:
+        who = f" from anyone but {args.exclude_author}" if args.exclude_author else ""
+        print(f"no notes{who} on !{args.iid}")
+    warn_if_truncated(discussions, "discussions")
+
+
 def time_left(deadline: float | None) -> float | None:
     """What a request may still take, measured when it is about to be issued.
 
@@ -586,6 +711,69 @@ def cmd_pipeline_status(args: argparse.Namespace) -> None:
     # or canceled pipeline as green.
     if pipeline["status"] in ("failed", "canceled"):
         sys.exit(1)
+
+
+# A GitLab job trace prefixes every line with a timestamp and a stream id
+# ("2026-10-20T12:50:20.698079Z 01O ") and colours it with ANSI codes.
+TRACE_PREFIX = re.compile(r"^\d{4}-\d\d-\d\dT[\d:.]+Z \d+[OE]\+? ?")
+# What a failing PHP gate says about itself: PHPUnit's numbered defects and
+# its summary, PHPStan's file headers and count. Infection runs PHPUnit
+# first and prints its output indented, hence the leading whitespace; it also
+# wraps at about 80 columns, which splits a test name over several lines, so
+# there the count line is what names the failure.
+TRACE_SIGNALS = re.compile(
+    r"^\s*\d+\) \S+::\S+"
+    r"|^\s*There (was|were) \d+ (errors?|failures?):$"
+    r"|^\s*(FAILURES|ERRORS)!$"
+    r"|^\s*Tests: \d+.*(Errors|Failures): \d+"
+    r"|^\s*Line\s+\S+\.php\s*$"
+    r"|\[ERROR\] Found \d+ errors?"
+)
+TRACE_TAIL = 15
+
+
+def trace_summary(trace: str) -> list[str]:
+    """The lines of a job trace that name what failed, else its last lines.
+
+    Reading a 1000-line trace to find one failing test is what this is for;
+    the tail fallback keeps a failure of another kind (a crashed install, a
+    lint) from coming back as an empty answer.
+    """
+    lines = []
+    for line in trace.splitlines():
+        line = printable(TRACE_PREFIX.sub("", line)).rstrip()
+        if line.startswith("section_"):
+            continue
+        lines.append(line)
+    signals = [line.strip() for line in lines if TRACE_SIGNALS.search(line)]
+    if signals:
+        # A defect is printed in the list and again in the detail block.
+        return list(dict.fromkeys(signals))
+    return [line for line in lines if line.strip()][-TRACE_TAIL:]
+
+
+def cmd_pipeline_failures(args: argparse.Namespace) -> None:
+    """Each failed job of a pipeline with the lines of its trace that say why."""
+    jobs = call(
+        f"/projects/{encoded(args.project)}/pipelines/"
+        f"{numeric(args.id, 'pipeline id')}/jobs?per_page={PAGE_SIZE}"
+    )
+    failed = [
+        job
+        for job in (jobs if isinstance(jobs, list) else [])
+        if job.get("status") == "failed"
+    ]
+    if not failed:
+        print(f"no failed jobs in pipeline {args.id}")
+        return
+    for job in failed:
+        print(f"{job['name']} {job['web_url']}")
+        trace = call(
+            f"/projects/{encoded(args.project)}/jobs/{numeric(job['id'], 'job id')}/trace",
+            raw=True,
+        )
+        for line in trace_summary(trace):
+            print(f"  {line}")
 
 
 def probe_pipeline(
@@ -827,6 +1015,24 @@ def build_parser() -> argparse.ArgumentParser:
     mr_show.add_argument("iid")
     mr_show.set_defaults(func=cmd_mr_show)
 
+    mr_list = mr_sub.add_parser("list", help="merge requests, one line each")
+    mr_list.add_argument("project")
+    mr_list.add_argument("--author", help="a username, e.g. your own")
+    mr_list.add_argument(
+        "--state", default="opened", choices=["opened", "merged", "closed", "all"]
+    )
+    mr_list.set_defaults(func=cmd_mr_list)
+
+    mr_discussions = mr_sub.add_parser(
+        "discussions", help="review comments, system notes left out"
+    )
+    mr_discussions.add_argument("project")
+    mr_discussions.add_argument("iid")
+    mr_discussions.add_argument(
+        "--exclude-author", help="drop this user's notes, e.g. your own"
+    )
+    mr_discussions.set_defaults(func=cmd_mr_discussions)
+
     pipeline = subparsers.add_parser("pipeline", help="read or await a pipeline")
     pipeline_sub = pipeline.add_subparsers(dest="pipeline_command", required=True)
     for name, func in (("status", cmd_pipeline_status), ("wait", cmd_pipeline_wait)):
@@ -845,6 +1051,12 @@ def build_parser() -> argparse.ArgumentParser:
             sub.add_argument("--interval", type=positive_int, default=60)
             sub.add_argument("--timeout", type=positive_int, default=3600)
         sub.set_defaults(func=func)
+    failures = pipeline_sub.add_parser(
+        "failures", help="failed jobs and the trace lines that name the failure"
+    )
+    failures.add_argument("project")
+    failures.add_argument("--id", required=True, help="a pipeline id")
+    failures.set_defaults(func=cmd_pipeline_failures)
 
     link = subparsers.add_parser("link", help="relate two issues")
     link.add_argument("project")
