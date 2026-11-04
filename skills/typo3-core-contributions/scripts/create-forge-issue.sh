@@ -84,7 +84,7 @@ esac
 # Forge has the "TYPO3 Version" field (id 4) on Bug and Task only. A Feature
 # accepts the value and drops it without an error, so it is not asked for.
 TYPO3_VERSION=""
-if [ "$TRACKER_ID" != 2 ]; then
+if [[ "$TRACKER_ID" != 2 ]]; then
     echo ""
     read -r -p "TYPO3 version affected (e.g., 13, 14) [13]: " TYPO3_VERSION
     TYPO3_VERSION=${TYPO3_VERSION:-13}
@@ -131,7 +131,7 @@ echo "  Tracker: $TRACKER_NAME"
 echo "  Subject: $SUBJECT"
 echo "  Priority: $PRIORITY_NAME"
 echo "  Category: $CATEGORY_NAME"
-[ -n "$TYPO3_VERSION" ] && echo "  TYPO3 Version: $TYPO3_VERSION"
+[[ -n "$TYPO3_VERSION" ]] && echo "  TYPO3 Version: $TYPO3_VERSION"
 [ -n "$TAGS" ] && echo "  Tags: $TAGS"
 echo ""
 
