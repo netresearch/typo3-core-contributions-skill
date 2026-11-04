@@ -734,18 +734,20 @@ A clone made with `git clone --depth 1` holds one commit. There `git log -- <fil
 git rev-parse --is-shallow-repository   # true: local history says nothing
 ```
 
-In a shallow clone, ask Gerrit. `message:` searches commit messages, so search merged changes by a word their subject would carry (the component or class name), then read the trailers of the one that fits; `CURRENT_COMMIT` returns the commit message only together with `CURRENT_REVISION`:
+In a shallow clone, ask Gerrit. `path:` lists the merged changes that touched a file, newest first; quote the path. Then read the trailers of the change that fits; `CURRENT_COMMIT` returns the commit message only together with `CURRENT_REVISION`:
 
 ```bash
-curl -s 'https://review.typo3.org/changes/?q=project:Packages/TYPO3.CMS+status:merged+message:<term>&n=10' \
-  | tail -n +2 | jq -r '.[] | "\(._number) \(.subject)"'
+curl -s 'https://review.typo3.org/changes/?q=project:Packages/TYPO3.CMS+status:merged+path:"<path/to/file>"&n=25' \
+  | tail -n +2 | jq -r '.[] | "\(._number) \(.branch) \(.subject)\(if ._more_changes then "  [more: add &S=25]" else "" end)"'
 curl -s 'https://review.typo3.org/changes/<_number>?o=CURRENT_REVISION&o=CURRENT_COMMIT' \
   | tail -n +2 | jq -r '.revisions[].commit.message' | grep -E '^(Resolves|Related):'
 ```
 
+`n` caps the list. When the last entry carries `_more_changes: true` (the `[more]` marker above), the list is incomplete: fetch the next page with `&S=<offset>`, never conclude the change is absent. A backport appears once per branch, with the same subject. When the file was moved or the code came in through another file, `path:` misses it; `message:<term>` then searches commit messages for a word the subject would carry (the component or class name).
+
 `git fetch --unshallow` restores the full history instead, at the cost of downloading it.
 
-**Example** (checked 2026-11-04): in a `--depth 1` clone, `git log -- Build/Sources/TypeScript/backend/tab.ts` named an unrelated authentication commit. Change 93097, `[TASK] Replace Bootstrap Tabs`, carries `Resolves: #109171` and `Resolves: #109172`.
+**Example** (checked 2026-11-04): in a `--depth 1` clone, `git log -- Build/Sources/TypeScript/backend/tab.ts` named an unrelated authentication commit. `path:"Build/Sources/TypeScript/backend/tab.ts"` lists six merged changes, the oldest being 93097, `[TASK] Replace Bootstrap Tabs`, which carries `Resolves: #109171` and `Resolves: #109172`.
 
 ### Topics
 
