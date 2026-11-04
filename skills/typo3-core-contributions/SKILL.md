@@ -40,7 +40,7 @@ Resolves: #12345
 Releases: main, 13.4, 12.4
 ```
 
-`[BUGFIX]` `[FEATURE]` (main only) `[TASK]` `[DOCS]` `[SECURITY]`; breaking: `[!!!]`, `Releases: main` only. Every commit MUST carry `Resolves:`, not `Related:`.
+`[BUGFIX]` `[FEATURE]` (main only) `[TASK]` `[DOCS]` `[SECURITY]`; breaking: `[!!!]`, `Releases: main` only. Every commit MUST carry `Resolves:`, not `Related:`. No `Signed-off-by:` (no `git commit -s`) and no `Assisted-by:`/`Co-authored-by:` — the Core `AGENTS.md` forbids both; see `references/commit-message-format.md`.
 
 ## CI Debugging
 

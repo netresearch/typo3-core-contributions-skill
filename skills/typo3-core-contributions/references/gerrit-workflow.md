@@ -726,6 +726,29 @@ Sort with `sort -V`: a plain `sort` puts `v14.3.10` before `v14.3.9`.
 
 **Example** (checked 2026-10-22): Change-Id `Iad0c35f1232fc2fee0cfee1929215e6a86502257` is change 95864 on `main` and change 96318 on `14.3`, both merged. `/changes/96318/in` returns the tags `v14.3.8` and `v14.3.9`, so the change first shipped in v14.3.8. `/changes/95864/in` returns no tag, because no `v15` release has been tagged from `main` yet.
 
+### Finding the Change and Forge Issue Behind Existing Code
+
+A clone made with `git clone --depth 1` holds one commit. There `git log -- <file>` names that commit for every file in the tree — not the change that wrote the code — and `git log -S` points at that same commit, because it added every line. The answers look like history and are not. Check the clone first:
+
+```bash
+git rev-parse --is-shallow-repository   # true: local history says nothing
+```
+
+In a shallow clone, ask Gerrit. `path:` lists the merged changes that touched a file, newest first; quote the path. Then read the trailers of the change that fits; `CURRENT_COMMIT` returns the commit message only together with `CURRENT_REVISION`:
+
+```bash
+curl -s 'https://review.typo3.org/changes/?q=project:Packages/TYPO3.CMS+status:merged+path:"<path/to/file>"&n=25' \
+  | tail -n +2 | jq -r '.[] | "\(._number) \(.branch) \(.subject)\(if ._more_changes then "  [more: add &S=25]" else "" end)"'
+curl -s 'https://review.typo3.org/changes/<_number>?o=CURRENT_REVISION&o=CURRENT_COMMIT' \
+  | tail -n +2 | jq -r '.revisions[].commit.message' | grep -E '^(Resolves|Related):'
+```
+
+`n` caps the list. When the last entry carries `_more_changes: true` (the `[more]` marker above), the list is incomplete: fetch the next page with `&S=<offset>`, never conclude the change is absent. A backport appears once per branch, with the same subject. When the file was moved or the code came in through another file, `path:` misses it; `message:<term>` then searches commit messages for a word the subject would carry (the component or class name).
+
+`git fetch --unshallow` restores the full history instead, at the cost of downloading it.
+
+**Example** (checked 2026-11-04): in a `--depth 1` clone, `git log -- Build/Sources/TypeScript/backend/tab.ts` named an unrelated authentication commit. `path:"Build/Sources/TypeScript/backend/tab.ts"` lists six merged changes, the oldest being 93097, `[TASK] Replace Bootstrap Tabs`, which carries `Resolves: #109171` and `Resolves: #109172`.
+
 ### Topics
 
 Group related changes:

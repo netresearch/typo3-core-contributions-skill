@@ -73,9 +73,10 @@ check "sends nothing without FORGE_API_KEY" "absent" \
     "$([ -e "$CURL_LOG" ] && echo present || echo absent)"
 
 echo '{"issue":{"id":4242}}' >"$CURL_RESPONSE"
-# Subject, two description lines, Ctrl+D, then: Feature, Must have, TYPO3 14,
-# Frontend, two tags, confirm.
-create 'Fix the thing\nLine one\nLine two\n\x042\n1\n14\n4\nperf, ui\ny\n'
+# Subject, two description lines, Ctrl+D, then: Feature, Must have, Frontend,
+# two tags, confirm. A Feature is not asked for a TYPO3 version: Forge has no
+# such field on that tracker and drops the value without an error.
+create 'Fix the thing\nLine one\nLine two\n\x042\n1\n4\nperf, ui\ny\n'
 check "creates an issue" 0 "$?"
 check "posts to the Forge issues endpoint" 1 "$(grep -cx 'https://forge.typo3.org/issues.json' "$CURL_LOG")"
 check "sends the key as a header" 1 "$(grep -cx 'X-Redmine-API-Key: dummy-key' "$CURL_LOG.headers")"
@@ -87,7 +88,9 @@ check "project" "typo3cms-core" "$(payload .issue.project_id)"
 check "tracker 2 is Feature" "2" "$(payload .issue.tracker_id)"
 check "priority 1 is Must have" "3" "$(payload .issue.priority_id)"
 check "category 4 is Frontend" "977" "$(payload .issue.category_id)"
-check "TYPO3 version field" "14" "$(payload '.issue.custom_fields[] | select(.id == 4) | .value')"
+check "a Feature sends no TYPO3 version field" "0" "$(payload '[.issue.custom_fields[] | select(.id == 4)] | length')"
+grep -q "TYPO3 version affected" "$WORK/out"
+check "a Feature is not asked for a TYPO3 version" 1 "$?"
 check "tags field" "perf, ui" "$(payload '.issue.custom_fields[] | select(.id == 3) | .value')"
 grep -q "Issue #: 4242" "$WORK/out"
 check "prints the new issue number" 0 "$?"
@@ -105,6 +108,12 @@ check "default priority is Should have" "4" "$(payload .issue.priority_id)"
 check "default category is Miscellaneous" "975" "$(payload .issue.category_id)"
 check "default TYPO3 version" "13" "$(payload '.issue.custom_fields[] | select(.id == 4) | .value')"
 check "no tags field without tags" "0" "$(payload '[.issue.custom_fields[] | select(.id == 3)] | length')"
+
+# Task, Should have, TYPO3 14, Misc, no tags, confirm.
+create 'Fix the thing\nOnly line\n\x043\n\n14\n\n\n\n'
+check "creates a Task" 0 "$?"
+check "tracker 3 is Task" "4" "$(payload .issue.tracker_id)"
+check "a Task sends the TYPO3 version field" "14" "$(payload '.issue.custom_fields[] | select(.id == 4) | .value')"
 
 create 'Fix the thing\nOnly line\n\x04\n\n\n\n\nn\n'
 check "a declined confirmation exits 0" 0 "$?"
