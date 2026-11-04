@@ -81,9 +81,14 @@ case $PRIORITY_CHOICE in
     *) echo -e "${RED}Invalid choice${NC}"; exit 1 ;;
 esac
 
-echo ""
-read -r -p "TYPO3 version affected (e.g., 13, 14) [13]: " TYPO3_VERSION
-TYPO3_VERSION=${TYPO3_VERSION:-13}
+# Forge has the "TYPO3 Version" field (id 4) on Bug and Task only. A Feature
+# accepts the value and drops it without an error, so it is not asked for.
+TYPO3_VERSION=""
+if [ "$TRACKER_ID" != 2 ]; then
+    echo ""
+    read -r -p "TYPO3 version affected (e.g., 13, 14) [13]: " TYPO3_VERSION
+    TYPO3_VERSION=${TYPO3_VERSION:-13}
+fi
 
 echo ""
 echo "Select category (common ones, or enter ID manually):"
@@ -126,7 +131,7 @@ echo "  Tracker: $TRACKER_NAME"
 echo "  Subject: $SUBJECT"
 echo "  Priority: $PRIORITY_NAME"
 echo "  Category: $CATEGORY_NAME"
-echo "  TYPO3 Version: $TYPO3_VERSION"
+[ -n "$TYPO3_VERSION" ] && echo "  TYPO3 Version: $TYPO3_VERSION"
 [ -n "$TAGS" ] && echo "  Tags: $TAGS"
 echo ""
 
@@ -155,9 +160,9 @@ JSON_PAYLOAD=$(jq -n \
             tracker_id: $tracker,
             category_id: $category,
             priority_id: $priority,
-            custom_fields: ([
-                {id: 4, value: $typo3_version}
-            ] + (if $tags != "" then [{id: 3, value: $tags}] else [] end))
+            custom_fields: (
+                (if $typo3_version != "" then [{id: 4, value: $typo3_version}] else [] end)
+                + (if $tags != "" then [{id: 3, value: $tags}] else [] end))
         }
     }')
 

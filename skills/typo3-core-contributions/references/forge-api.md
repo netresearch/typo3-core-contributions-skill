@@ -201,11 +201,13 @@ curl -H @<(printf 'X-Redmine-API-Key: %s\n' "$FORGE_API_KEY") \
 | ID | Name | Purpose |
 |----|------|---------|
 | 3  | Tags | Comma-separated keywords |
-| 4  | TYPO3 Version | Version affected (e.g., "13", "12") |
+| 4  | TYPO3 Version | Version affected (e.g., "13", "12"). Bug and Task only, see below |
 | 5  | PHP Version | PHP version (e.g., "8.2", "8.3") |
 | 8  | Complexity | Complexity estimate |
 | 15 | Is Regression | Whether it's a regression |
 | 18 | Sprint Focus | Sprint assignment |
+
+Redmine enables a custom field per tracker. "TYPO3 Version" (4) exists on Bug (1) and Task (4), not on Feature (2): a Feature accepts the value with HTTP 201 and drops it, and the created issue has no such field. Checked on 2026-11-04 against the three newest issues of each tracker. A `201` therefore proves nothing about a custom field — read the issue back (`GET /issues/<id>.json`) and look for it in `custom_fields`.
 
 ## Complete Examples
 
@@ -250,7 +252,6 @@ curl -X POST \
       "category_id": 977,
       "priority_id": 5,
       "custom_fields": [
-        {"id": 4, "value": "14"},
         {"id": 3, "value": "WebP, images, performance"}
       ]
     }
@@ -317,7 +318,7 @@ Before creating issue, validate:
 - [ ] subject is descriptive (not too generic)
 - [ ] tracker_id is valid (1, 2, or 4 most common)
 - [ ] category_id matches project categories
-- [ ] TYPO3 version custom field included (id: 4)
+- [ ] TYPO3 version custom field included (id: 4) for a Bug or Task; left out for a Feature, where Forge drops it
 
 ## Best Practices
 

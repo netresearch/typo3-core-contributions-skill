@@ -277,6 +277,15 @@ Releases: main, 14.3
 Reverts: I1234567890abcdef1234567890abcdef12345678
 ```
 
+### Trailers an Agent Must Not Add
+
+The `AGENTS.md` at the root of the Core repository forbids two kinds of trailer, and it overrides any general habit of the agent or its user:
+
+- **`Signed-off-by:`**, not even when asked to commit. It certifies the Developer Certificate of Origin, a statement only the human can make, when they commit or amend the change themselves. Do not run `git commit -s`.
+- **Attribution**: `Co-authored-by:`, `Assisted-by:`, "Generated with …" and the like, in commit messages, code, comments or documentation. Switch off any default attribution the tool adds.
+
+Read the current wording in the Core `AGENTS.md` before the first commit; it is the authority, this summary is a copy (checked 2026-11-04).
+
 ## Complete Examples
 
 ### Example 1: Bugfix
