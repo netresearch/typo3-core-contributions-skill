@@ -47,9 +47,10 @@ Some defects exist on one database or driver only. Functional tests default to S
 
 Before pushing such a patch:
 
-1. Run step 3 on every platform the runner offers (`-d sqlite`, `-d mariadb -a mysqli`, `-d mariadb -a pdo_mysql`, `-d postgres`) and note where the reverted fix fails.
-2. Name that platform in the commit message: "The test fails without the fix on PostgreSQL only, because …".
-3. Prove it on the version the TYPO3 documentation names, not the runner default. Without `-i`, `-d postgres` starts PostgreSQL 10; the docs list PostgreSQL 15:
+1. With the fix reverted as in step 2, run the test on every platform the runner offers (`-d sqlite`, `-d mariadb -a mysqli`, `-d mariadb -a pdo_mysql`, `-d mysql`, `-d postgres`) and note every platform where it fails.
+2. Restore the fix and run the test again on each of those platforms, with the same `-d` and `-i`. It must pass there; a red run without the fix proves nothing if the fix does not turn it green on the same platform.
+3. Name the platforms in the commit message: "The test fails without the fix on PostgreSQL only, because …".
+4. Use a database version you can name, not the runner default. Without `-i`, `-d postgres` starts PostgreSQL 10. Take the version from the bug report; without one, use the version the TYPO3 documentation lists (PostgreSQL 15 at the time of writing):
 
    ```bash
    ./Build/Scripts/runTests.sh -s functional -d postgres -i 15 -- --colors=never path/to/Test.php
