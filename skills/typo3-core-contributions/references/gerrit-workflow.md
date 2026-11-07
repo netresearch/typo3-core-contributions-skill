@@ -607,6 +607,20 @@ git push origin HEAD:refs/for/main
 - Thank reviewers
 - Click **Send**
 
+From the command line, the SSH `gerrit review` command takes a `ReviewInput` as JSON on stdin. With `in_reply_to` the comment lands in the reviewer's thread instead of as a separate change message. A patchset-level comment sits under the key `/PATCHSET_LEVEL`; read its `id` first:
+
+```bash
+curl -s https://review.typo3.org/changes/<change>/comments | tail -n +2 \
+  | jq -r '.["/PATCHSET_LEVEL"][] | [.id, .author.name, .patch_set] | @tsv'
+
+jq -n --rawfile m reply.md \
+  '{comments: {"/PATCHSET_LEVEL": [{message: $m, in_reply_to: "<comment-id>", unresolved: false}]}}' \
+  > review.json
+ssh -p 29418 <user>@review.typo3.org gerrit review --json <change>,<patchset> < review.json
+```
+
+The REST answer starts with `)]}'`, which `tail -n +2` removes. Read the comment back afterwards, its `in_reply_to` must name the reviewer's comment. Code fences in the message render as code blocks.
+
 #### Example Response
 
 ```
