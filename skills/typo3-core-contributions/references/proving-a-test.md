@@ -41,6 +41,24 @@ Same shape outside TYPO3, where it cost a review round in [phpDocumentor/guides#
 
 So when step 3 leaves the test green, check in this order: is the component registered in **this test's** environment, does the entry point you assert on reach it, and only then whether the assertion is too weak.
 
+## When the test can only fail on one platform
+
+Some defects exist on one database or driver only. Functional tests default to SQLite, and that is what a reviewer runs first, so a test that can only turn red elsewhere looks unproven. On change 97382 a test for `DriverResult::fetchOne()` drew a Code-Review -1 with "The provided test does not turn red when the patch is removed": only `pdo_pgsql` returns a `bytea` column as a stream, while SQLite, mysqli and pdo_mysql already return a string, so the reverted fix stayed green everywhere except PostgreSQL. The vote was removed after a reply that showed the red run.
+
+Before pushing such a patch:
+
+1. Run step 3 on every platform the runner offers (`-d sqlite`, `-d mariadb -a mysqli`, `-d mariadb -a pdo_mysql`, `-d postgres`) and note where the reverted fix fails.
+2. Name that platform in the commit message: "The test fails without the fix on PostgreSQL only, because …".
+3. Prove it on the version the TYPO3 documentation names, not the runner default. Without `-i`, `-d postgres` starts PostgreSQL 10; the docs list PostgreSQL 15:
+
+   ```bash
+   ./Build/Scripts/runTests.sh -s functional -d postgres -i 15 -- --colors=never path/to/Test.php
+   ```
+
+   Options for PHPUnit go after `--` and before the path. Placed after the path, `--colors=never` is read as a second test file and the run ends with `Test file "--colors=never" not found`.
+
+When the output goes into a review reply, paste it unchanged. `--colors=never` keeps escape codes out, and a run with the database image already pulled keeps Docker's download lines out, so nothing needs removing afterwards.
+
 ## Counting occurrences for the report
 
 `grep -r` in a tree where the suite has run counts generated output as if it were source — `var/`, `typo3temp/`, `.Build/`, and every fixture's own output directory. `git grep` sees tracked files only. Any number that lands in a commit message or a review reply has to come from the tracked tree: a count taken from a post-run worktree was wrong by four, went into a public review comment, and had to be corrected afterwards.
