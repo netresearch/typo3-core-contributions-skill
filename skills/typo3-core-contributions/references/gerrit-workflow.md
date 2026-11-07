@@ -124,8 +124,11 @@ git push origin HEAD:refs/for/main%ready
 #   "(no new changes)" and the change stays WIP. The amend in Option A
 #   gives the commit a new hash; if main has moved, a rebase does the same
 #   and is the cleaner reason for a new patch set.
-# - Either way the new patch set drops core-ci's Verified vote and CI runs
-#   again. To keep the current patch set and its vote, use Option B.
+# - core-ci's Verified vote is copied only to a patch set Gerrit classes as
+#   NO_CHANGE (same tree, parent and message), which the empty amend is.
+#   The copied vote is the old CI result, not a new one. A rebase makes the
+#   vote outdated, and CI has to vote again. Option B keeps the current
+#   patch set.
 # - %wip flag sets WIP state: git push origin HEAD:refs/for/main%wip
 # - SSH 'gerrit review' command does NOT support WIP flags (use git push flags instead)
 ```
