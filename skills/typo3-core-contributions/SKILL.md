@@ -25,7 +25,7 @@ Run `${CLAUDE_SKILL_DIR}/scripts/verify-prerequisites.sh`: TYPO3.org account, Ge
 5. **Commit**: format below, `Resolves: #<issue>` + `Releases:`
 6. **Push**: `git push origin HEAD:refs/for/main%wip` — a plain push is **not** WIP; reviewers vote and amending outdates their votes
 7. **CI**: wait for all jobs, read the actual logs at `git.typo3.org/typo3/CI/cms/-/jobs/<id>`, fix ALL failures in one amend+push
-8. **Ready**: `git push origin HEAD:refs/for/main%ready` or Gerrit UI "Start Review"
+8. **Ready**: Gerrit UI "Start Review", or `git push origin HEAD:refs/for/main%ready` with a new patch set — pushing the commit Gerrit already has is rejected with "(no new changes)"
 9. **Review**: amend, preserve Change-Id. Fetch the reviewer's patchset first: `git fetch origin refs/changes/XX/NNNNN/N && git reset --soft FETCH_HEAD`
 10. **Update**: `git commit --amend && git push origin HEAD:refs/for/main`
 
@@ -56,7 +56,7 @@ Read ALL failing job logs, never guess; fix everything in one patchset. Locally:
 | Task | Command |
 |------|---------|
 | Push to Gerrit | `git push origin HEAD:refs/for/main%wip` |
-| Mark ready | `git push origin HEAD:refs/for/main%ready` |
+| Mark ready | Gerrit UI "Start Review", or `git push origin HEAD:refs/for/main%ready` on a new patch set |
 | Rebase | `git fetch origin && git rebase origin/main` |
 | Cherry-pick patch | `git fetch origin refs/changes/XX/NNNNN/N && git cherry-pick FETCH_HEAD` |
 | Install hook | `cp Build/git-hooks/commit-msg .git/hooks/ && chmod +x .git/hooks/commit-msg` |

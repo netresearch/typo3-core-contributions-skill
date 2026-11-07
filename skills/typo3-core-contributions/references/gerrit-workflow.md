@@ -119,7 +119,16 @@ git push origin HEAD:refs/for/main%ready
 # b. Click "Start Review" button (top right area, near your avatar)
 #
 # Notes:
-# - %ready flag removes WIP state (even with empty pushes)
+# - %ready removes WIP state only on a push that creates a new patch set.
+#   Pushing the commit Gerrit already has is rejected with
+#   "(no new changes)" and the change stays WIP. The amend in Option A
+#   gives the commit a new hash; if main has moved, a rebase does the same
+#   and is the cleaner reason for a new patch set.
+# - core-ci's Verified vote is copied only to a patch set Gerrit classes as
+#   NO_CHANGE (same tree, parent and message), which the empty amend is.
+#   The copied vote is the old CI result, not a new one. A rebase makes the
+#   vote outdated, and CI has to vote again. Option B keeps the current
+#   patch set.
 # - %wip flag sets WIP state: git push origin HEAD:refs/for/main%wip
 # - SSH 'gerrit review' command does NOT support WIP flags (use git push flags instead)
 ```
