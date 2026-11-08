@@ -362,7 +362,7 @@ Checks that run on pull requests in this repository:
 - Pull requests to `main`: `security.yml` with Composer Audit, SAST (Opengrep; findings handled under the [organisation's static analysis rule](https://github.com/netresearch/.github/blob/main/SECURITY.md#static-analysis-sast)), Betterleaks secret scanning, zizmor, dependency review (`fail-on-severity: high`) and CodeQL analysis of Python and the GitHub Actions workflows; Harness Verification (`harness-verify.yml`); Template Drift (`check-template-drift.yml`) and the DCO sign-off check.
 - Also on every pull request: Labeler (`labeler.yml`), the dependency auto-merge job (`auto-merge-deps.yml`, skipped unless a dependency bot opened the pull request), SonarCloud code analysis, Copilot code review (a repository ruleset) and CodeRabbit review.
 - Required for merging into `main`: Skill Validation, Eval Validation, Skill Tests, All security checks (the gate job of `security.yml`, which fails when Betterleaks, zizmor, dependency review, Composer Audit with Opengrep, or CodeQL fails) and DCO; the `merge-queue` ruleset's code-scanning rule requires CodeQL results with no error-level alerts and no security alerts of severity high or higher. GitHub secret scanning with push protection is enabled for the repository.
-- The only recorded static-analysis exception is the `nosemgrep` comment on the `urlopen` call in `t3o-gitlab.py`, explained in the assurance case.
+- Two static-analysis exceptions are recorded, both explained in the assurance case: the `nosemgrep` comment on the `urlopen` call in `t3o-gitlab.py`, and the one on the `unserialize` call in `ter-seed-from-catalogue.php`.
 
 ## License
 

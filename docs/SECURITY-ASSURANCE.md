@@ -62,7 +62,10 @@ In the tables below, `scripts/<name>` stands for `skills/typo3-core-contribution
 | A release is built from a forged tag or with a version that disagrees with `plugin.json` | The release reusable accepts only annotated tags that GitHub reports as signed, and fails when the tag differs from `.claude-plugin/plugin.json` | `.github/workflows/release.yml` |
 | A released archive is tampered with | The release reusable publishes a Cosign-signed (keyless) `SHA256SUMS.txt` and build-provenance attestations for the archives | `.github/workflows/release.yml` |
 
-The one recorded static-analysis exception is `# nosemgrep: dynamic-urllib-use-detected` on the `urlopen` call in `open_checked()`: the rule concerns `file://` URLs, which `https_request()` refuses before any request is built.
+Two static-analysis exceptions are recorded:
+
+- `# nosemgrep: dynamic-urllib-use-detected` on the `urlopen` call in `open_checked()`: the rule concerns `file://` URLs, which `https_request()` refuses before any request is built.
+- `// nosemgrep: unserialize-use` on the `unserialize` call in `ter-seed-from-catalogue.php`: the rule concerns object injection, and the call passes `allowed_classes => false`, so no object is created. The input is the public TER catalogue, which stores dependencies only in PHP-serialized form.
 
 ## Secure design principles applied
 

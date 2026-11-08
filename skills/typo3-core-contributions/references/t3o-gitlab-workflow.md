@@ -216,7 +216,7 @@ The binding rules:
 - **Branch naming** is documented as `feature/<issue-number>-<description>` and `hotfix/<description>`. Repo practice also uses `task/` and `bugfix/` prefixes; keep the issue number either way.
 - **The MR description must state the changes *and the testing done*.** An MR without a testing section is incomplete by their rules.
 - **Every claim about framework behaviour in a commit or MR text needs its source.** Quote the `vendor/` file and line, or the live measurement, before you write why something is or is not needed. Three such sentences in one session were wrong and only a review found them (2026-10-05): that TYPO3 13 still reads a FlexForm's `switchableControllerActions` (it reads none, the list is inert), that the site exposes Bootstrap "only through its data API" (the jQuery plugins are there, see *Frontend JavaScript on the live site*), and that a property-mapping exception "gives an HTTP 500" (in Production the plugin's exception handler renders a message with HTTP 200).
-- **A UI change cannot be checked on a local instance.** No TER database dump is available: the DDEV project `ter` comes without a database, so there is no page tree, no plugin content, no frontend admin group and no Solr core to render against (`docker volume ls | grep -i ter` shows whether one exists on this machine). Prove what can be proved — controller unit tests for the variables a template gets, the JavaScript against the live bundle — and say in the testing section, in bold, that the rendered page was not verified on a running instance, so a maintainer looks at it on a test system before merging.
+- **Check a UI change on a local instance seeded from the public catalogue.** No TER database dump is available and the DDEV project `ter` comes without a database, but extension pages and the backend version form render from rows built out of `extensions.xml.gz` — see *Render extension pages on a local instance* below. Do this before approving a merge request that changes what a page or a form shows. Still missing from such an instance: Solr search and a frontend admin group. For a change that needs either, prove what can be proved — controller unit tests for the variables a template gets, the JavaScript against the live bundle — and say in the testing section, in bold, which part was not verified on a running instance, so a maintainer looks at it on a test system before merging.
 - **Commit subjects use the Core prefixes** — `[BUGFIX]`, `[TASK]`, `[FEATURE]` — so `validate-commit-message.py` still applies, minus the Gerrit-only `Change-Id`. Use `Relates: #<iid>` for the site issue.
 - **Maintainers merge with review threads still open.** Nothing in `ter` blocks a merge on unresolved discussions, and a merge can land while a review is being written. Read the merge request's `state` again immediately before posting review comments — a check of `sha` and `diff_refs` alone does not tell you. (`!911` was merged at 14:31 UTC; three review threads arrived at 14:52 and were never read.) The same goes for pushing a fixup and for updating the description: a maintainer merged two merge requests while a third review round was running on them (2026-09-30), the fixup push then failed with `stale info` because the merge had deleted the branch, and the leftovers had to go into a follow-up merge request.
 - **Findings from a review go into the review, never into new issues.** When the merge request is already merged, the review has nowhere to land: turn the findings into a follow-up merge request that fixes them, target `develop`, and link the original threads from its description. The only exception is the case above where you cannot push and forking is refused: then no follow-up merge request can exist, and the issue with a ready-to-apply diff is the fallback.
@@ -508,7 +508,9 @@ A red pipeline is not automatically your change. Both retried MRs in one 2026-08
 session failed on `The "https://api.github.com/repos/…/zipball/…" file could not
 be downloaded (HTTP/2 504)` during `composer install` — a GitHub outage, not the
 diff. Read the job log before touching the branch; `POST /projects/:id/jobs/:job_id/retry`
-re-runs a single job.
+re-runs a single job. The same holds for `test:unit`: `Typo3VersionServiceTest`
+fetches `https://get.typo3.org` live, and a timeout there failed the job of
+ter !968 once (2026-11-01); one retry of the job passed.
 
 A job can also hang before it starts. `Create Badge` once sat for 25
 minutes in `Preparing the "docker-autoscaler" executor`, where it normally
@@ -816,6 +818,46 @@ same data, `ddev stop --unlist ter` in the `main` checkout and `ddev start` in
 the bugfix worktree: the database volume belongs to the project name, so the
 seeded rows come along. Found this way (2026-10-05): `Data too long for column
 'title'`, a composer.json `description` whose only ` - ` sat near the end — ter !948.
+
+### Render extension pages on a local instance
+
+`scripts/ter-seed-from-catalogue.php` turns the public catalogue into SQL for a
+page tree, the plugin content, one author and a set of extensions with all
+their versions (12 keys by default, 552 versions; pass other keys as further
+arguments). Copy it into the checkout's git-ignored `var/`, so that the PHP
+inside DDEV can run it:
+
+```bash
+ddev start
+mkdir -p var && cp <skill>/scripts/ter-seed-from-catalogue.php var/
+curl -so var/extensions.xml.gz https://extensions.typo3.org/fileadmin/ter/extensions.xml.gz
+ddev exec php var/ter-seed-from-catalogue.php var/extensions.xml.gz > var/seed.sql
+ddev exec vendor/bin/typo3 database:updateschema
+ddev import-db --file=var/seed.sql --no-drop          # the post-import-db hook also creates the backend user admin / password
+ddev exec vendor/bin/typo3 ter:fetchCoreVersion   # without public/fileadmin/currentcoredata.json every extension page throws a TypeError
+ddev build-frontend          # without it every page fails: "Unable to render image tag"
+ddev exec vendor/bin/typo3 cache:flush
+curl -sk https://ter.ddev.site/extension/solr
+```
+
+What the script writes, and why:
+
+- The plugin rows carry `CType='terfe2_pi1'`. With `CType='list'` and
+  `list_type='terfe2_pi1'`, TYPO3 13 renders no plugin.
+- Every version gets `author=1` and `em_category='plugin'`. The backend version
+  form saved only after both were set.
+- `composer_info` is written as `''`, because the column has no default.
+- Relation rows are left out. A branch that still reads dependencies from them
+  shows "Dependencies none" for every version (`develop` before ter !897,
+  measured 2026-11-08); with the dependency JSON as the source, the pages list
+  the dependencies.
+
+Checked this way (2026-11-01): ter !897 at `7d19cd28` — extension pages, the
+read-only dependency field in the backend form with a real save, and the
+dependency commands against the seeded versions. Reset the database
+afterwards (`DROP DATABASE db; CREATE DATABASE db;` in `ddev exec -s db`),
+because the seed uses fixed uids and a second import collides. ter !971
+proposes the same script and steps for the project's README.
 
 ## extensions.typo3.org sits behind Anubis — every live probe is suspect
 

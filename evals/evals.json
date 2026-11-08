@@ -879,5 +879,39 @@
         "Grep the rebased branch for callers and drop dead hunks, rewrite the commit message and the description, read the develop pipeline, run composer install --ignore-platform-reqs, then push."
       ]
     }
+  },
+  {
+    "name": "ter-ui-change-checked-on-seeded-local-instance",
+    "prompt": "A merge request on the TER site (git.typo3.org, services/t3o-sites/extensions.typo3.org/ter) changes how the extension detail page and the backend version form show dependencies. Its pipeline is green and the unit tests cover the new code. I am asked to approve it. There is no production database dump. Can I check it on a running instance first, and how?",
+    "assertions": [
+      {
+        "type": "content_regex",
+        "value": "(?i)extensions\\.xml\\.gz|catalogue",
+        "description": "Seeds the instance from the public catalogue"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)ter-seed-from-catalogue",
+        "description": "Uses the skill's seed script"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)build-frontend",
+        "description": "Builds the theme assets, without which every page fails"
+      },
+      {
+        "type": "content_regex",
+        "value": "(?i)(backend|version form).{0,120}(save|author)|(author|save).{0,120}(backend|version form)",
+        "description": "Checks a real save of the backend version form"
+      }
+    ],
+    "samples": {
+      "passing": "Yes. Download the public catalogue extensions.xml.gz and turn it into SQL with scripts/ter-seed-from-catalogue.php, then ddev start, database:updateschema, import the SQL into the db container, run ddev build-frontend and flush the cache. Open /extension/<key> for a few seeded extensions and the backend version form; the seed sets an author and a category, so a real save works. Solr search and a frontend admin group are still missing, so say in the testing section that those parts were not checked.",
+      "failing": [
+        "No, there is no database dump for TER, so a local instance has nothing to render. Approve on the green pipeline and the unit tests and ask a maintainer to look at a test system.",
+        "Seed the instance from the public catalogue extensions.xml.gz with ter-seed-from-catalogue, start DDEV and open the extension pages.",
+        "Run ddev start, ddev build-frontend and open the backend version form to save a version."
+      ]
+    }
   }
 ]
