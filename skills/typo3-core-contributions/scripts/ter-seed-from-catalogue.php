@@ -12,7 +12,15 @@
 
 ini_set('memory_limit', '-1');
 $keys = array_slice($argv, 2) ?: ['solr', 'news', 'dd_deepl', 'custom_shortcut', 'bgm_hreflang', 'container_modify_fields', 'iconcheck', 'sessionpassword', 'tt_products', 'mda_sbbtimetable', 'static_info_tables', 'tt_address'];
-$xml = simplexml_load_string(gzdecode(file_get_contents($argv[1])), 'SimpleXMLElement', LIBXML_PARSEHUGE);
+// A failed download leaves an HTML page or nothing; stop before any SQL is written.
+libxml_use_internal_errors(true);
+$raw = is_readable($argv[1] ?? '') ? file_get_contents($argv[1]) : false;
+$data = $raw === false ? false : @gzdecode($raw);
+$xml = $data === false ? false : simplexml_load_string($data, 'SimpleXMLElement', LIBXML_PARSEHUGE);
+if ($xml === false) {
+    fwrite(STDERR, 'Cannot read the catalogue from ' . ($argv[1] ?? '(no path given)') . ": expected extensions.xml.gz\n");
+    exit(1);
+}
 $q = fn ($s) => "'" . str_replace(["\\", "'"], ["\\\\", "''"], (string)$s) . "'";
 $int = function (string $v): int { $p = array_map('intval', explode('.', $v)) + [0, 0, 0]; return $p[0] * 1000000 + ($p[1] ?? 0) * 1000 + ($p[2] ?? 0); };
 $now = time();
@@ -52,5 +60,9 @@ foreach ($xml->extension as $ext) {
 // A dependency on an extension without versions links to "No public version".
 $eUid++;
 $sql[] = "INSERT INTO tx_terfe2_domain_model_extension (uid,pid,tstamp,crdate,ext_key,frontend_user,versions,last_version,composer_name) VALUES ($eUid,2,$now,$now,'extbase','',0,0,'');";
+if ($found === []) {
+    fwrite(STDERR, 'None of the extension keys is in the catalogue: ' . implode(' ', $keys) . "\n");
+    exit(1);
+}
 echo implode("\n", $sql), "\n";
 fwrite(STDERR, 'found: ' . implode(' ', $found) . ' versions=' . ($vUid - 1000) . "\n");
