@@ -824,15 +824,16 @@ seeded rows come along. Found this way (2026-10-05): `Data too long for column
 `scripts/ter-seed-from-catalogue.php` turns the public catalogue into SQL for a
 page tree, the plugin content, one author and a set of extensions with all
 their versions (12 keys by default, 552 versions; pass other keys as further
-arguments). It needs the PHP 8.4 that DDEV runs, or `php:8.4-cli` in Docker:
+arguments). Copy it into the checkout's git-ignored `var/`, so that the PHP
+inside DDEV can run it:
 
 ```bash
-curl -sO https://extensions.typo3.org/fileadmin/ter/extensions.xml.gz
-php <skill>/scripts/ter-seed-from-catalogue.php extensions.xml.gz > seed.sql
 ddev start
+mkdir -p var && cp <skill>/scripts/ter-seed-from-catalogue.php var/
+curl -so var/extensions.xml.gz https://extensions.typo3.org/fileadmin/ter/extensions.xml.gz
+ddev exec php var/ter-seed-from-catalogue.php var/extensions.xml.gz > var/seed.sql
 ddev exec vendor/bin/typo3 database:updateschema
-docker cp seed.sql ddev-ter-db:/tmp/seed.sql
-ddev exec -s db 'mysql -uroot -proot db < /tmp/seed.sql'
+ddev import-db --file=var/seed.sql --no-drop          # the post-import-db hook also creates the backend user admin / password
 ddev exec vendor/bin/typo3 ter:fetchCoreVersion   # without public/fileadmin/currentcoredata.json every extension page throws a TypeError
 ddev build-frontend          # without it every page fails: "Unable to render image tag"
 ddev exec vendor/bin/typo3 cache:flush
@@ -853,7 +854,7 @@ What the script writes, and why:
 
 Checked this way (2026-11-01): ter !897 at `7d19cd28` — extension pages, the
 read-only dependency field in the backend form with a real save, and the
-dependency commands against 292 seeded versions. Reset the database
+dependency commands against the seeded versions. Reset the database
 afterwards (`DROP DATABASE db; CREATE DATABASE db;` in `ddev exec -s db`),
 because the seed uses fixed uids and a second import collides. ter !971
 proposes the same script and steps for the project's README.
