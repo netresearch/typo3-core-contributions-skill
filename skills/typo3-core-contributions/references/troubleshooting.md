@@ -233,6 +233,22 @@ The frequent finding in test code is an assertion that cannot fail — asserting
 non-null on a value the signature already types as `string`. `assertNotEmpty()`
 is usually what was meant.
 
+### Problem: "grunt scss ts html pre-merge" failed after a SCSS or TypeScript change
+
+The compiled CSS and JavaScript under `typo3/sysext/*/Resources/Public/` are
+committed. The job runs `runTests.sh -s checkGruntClean`, which rebuilds them
+and fails when the result differs from the patchset. Rebuild and commit the
+output together with the source change:
+
+```bash
+./Build/Scripts/runTests.sh -s build
+```
+
+A change to comments alone needs no rebuild: `Build/Gruntfile.js` runs the
+compiled Sass through `cssnano` with its default preset, which drops every
+comment except one opened with `/*!`.
+Any change to a selector, a property or a value changes the output.
+
 ### Problem: "Unit tests failed"
 
 ```bash
