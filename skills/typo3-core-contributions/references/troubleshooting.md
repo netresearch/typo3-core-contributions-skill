@@ -244,10 +244,12 @@ output together with the source change:
 ./Build/Scripts/runTests.sh -s build
 ```
 
-A change to comments alone needs no rebuild: `Build/Gruntfile.js` runs the
-compiled Sass through `cssnano` with its default preset, which drops every
-comment except one opened with `/*!`.
-Any change to a selector, a property or a value changes the output.
+In SCSS, a change to comments alone needs no rebuild: `Build/Gruntfile.js`
+runs the compiled Sass through `cssnano` with its default preset, which drops
+every comment except one opened with `/*!`. This does not hold for TypeScript,
+where a comment can reach the generated JavaScript, and a SCSS change that
+reaches no output (inside an unused mixin, say) leaves the CSS as it was.
+When in doubt, rebuild and let `git status` show whether anything changed.
 
 ### Problem: "Unit tests failed"
 
