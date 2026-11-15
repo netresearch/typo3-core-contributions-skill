@@ -41,6 +41,18 @@ Same shape outside TYPO3, where it cost a review round in [phpDocumentor/guides#
 
 So when step 3 leaves the test green, check in this order: is the component registered in **this test's** environment, does the entry point you assert on reach it, and only then whether the assertion is too weak.
 
+## When the test fails for a reason the runtime never has
+
+This is the mirror of the section above. A test can turn red without the fix for a reason that does not exist in a real run. Two shapes cost a review round in [TYPO3/testing-framework#756](https://github.com/TYPO3/testing-framework/pull/756):
+
+- **The environment, not the defect.** A unit test does not boot TYPO3, so Doctrine's own type classes answer there. At runtime, `ConnectionPool` replaces `date`, `datetime`, `datetime_immutable` and `time` with TYPO3 classes that pass a database string through unchanged. A unit case that sends `'2026-11-14 12:34:56'` through `Type::getType('datetime')` throws `InvalidType` without the fix. In a functional test, the same value round-trips without the fix. The red unit run showed a defect that no TYPO3 instance has.
+- **The mechanism, not the defect.** An assertion on how the fix works turns red for every case that the new rule touches. That includes cases whose old behaviour had no defect. In that pull request the assertion checked the type name that the snapshot export writes. All three cases turned red, but only the `json` case had a wrong restored value. The `text` and `datetime` cases changed their name only.
+
+Both kinds of test can stay, but "fails without the fix" does not show a defect for them. Before you report a red run as proof, check two things for each case:
+
+1. Does the failure also happen in the environment where the defect lives? For a database value, run the functional test. For a Doctrine type, read what TYPO3 registers in `ConnectionPool::$overrideDoctrineTypes` and `$customDoctrineTypes`.
+2. Was the old behaviour of this case wrong, or does the assertion only pin the new rule? State which one in the commit message or the review reply, so that nobody reads three red cases as three bugs.
+
 ## When the test can only fail on one platform
 
 Some defects exist on one database or driver only. Functional tests default to SQLite, and that is what a reviewer runs first, so a test that can only turn red elsewhere looks unproven. On change 97382 a test for `DriverResult::fetchOne()` drew a Code-Review -1 with "The provided test does not turn red when the patch is removed": only `pdo_pgsql` returns a `bytea` column as a stream, while SQLite, mysqli and pdo_mysql already return a string, so the reverted fix stayed green everywhere except PostgreSQL. The vote was removed after a reply that showed the red run.
