@@ -273,7 +273,9 @@ Two things follow, both observed on `ter` in one session:
   only your own commits are replayed.
 - **Push a rebased stack in one atomic push.** Rebase the bottom branch, then
   each one above it with `--onto <new parent head> <old parent head>`, and send
-  all of them together, each with its own lease:
+  all of them together, each with its own lease. The old parent head is the
+  parent commit the upper branch was built on; if the parent was amended after
+  that, take it from the upper branch's own log, not from the parent branch:
 
   ```bash
   git -C .bare push --atomic \
