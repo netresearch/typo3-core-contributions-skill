@@ -395,7 +395,10 @@ these things:
   and make a changed description look unchanged. `jq -j .description` prints
   the field without the added newline, so `cmp` against the file you sent
   answers exactly: `… | jq -j .description | cmp - sent.md` prints nothing
-  when both are identical and the first differing byte otherwise.
+  when both are identical and the first differing byte otherwise. The script
+  reads `--description-file` with Python's newline translation, so a file with
+  CRLF line endings goes out with LF; compare against
+  `<(sed 's/\r$//' sent.md)` in that case.
 
 ### Issue templates are not optional furniture
 
