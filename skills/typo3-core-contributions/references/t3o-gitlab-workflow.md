@@ -271,6 +271,21 @@ Two things follow, both observed on `ter` in one session:
   `git rebase <base-branch>` replays the *old* base commit too and conflicts with
   itself. Use `git rebase --onto <base-branch> <old-base-sha> <your-branch>` so
   only your own commits are replayed.
+- **Push a rebased stack in one atomic push.** Rebase the bottom branch, then
+  each one above it with `--onto <new parent head> <old parent head>`, and send
+  all of them together, each with its own lease:
+
+  ```bash
+  git -C .bare push --atomic \
+    --force-with-lease=refs/heads/a:<old a> --force-with-lease=refs/heads/b:<old b> \
+    origin <new a>:refs/heads/a <new b>:refs/heads/b
+  ```
+
+  Pushed one at a time, the stack is broken between two pushes: a pipeline or
+  a maintainer sees the upper merge request on its old parent, with a diff
+  that repeats the parent's old commits. With `--atomic` either every branch
+  moves or none does. Read the targets back afterwards; on `ter` (2026-11-16)
+  `!964` → `!965` → `!966` kept their targets and their commit counts.
 
 Say in the stacked MR's description which one has to land first; a reviewer
 otherwise reads a diff that assumes code they cannot see.
@@ -377,7 +392,9 @@ these things:
   when the original was fetched with `jq -r`. Drop that one terminal newline
   and compare the rest exactly before concluding that the `PUT` did not apply
   — stripping all trailing whitespace would also swallow Markdown hard breaks
-  and make a changed description look unchanged.
+  and make a changed description look unchanged. `jq -j .description` prints
+  the field without the added newline, so `cmp` against the file you sent
+  answers exactly: `… | jq -j .description | cmp -s - sent.md`.
 
 ### Issue templates are not optional furniture
 
