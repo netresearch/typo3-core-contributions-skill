@@ -394,7 +394,8 @@ these things:
   — stripping all trailing whitespace would also swallow Markdown hard breaks
   and make a changed description look unchanged. `jq -j .description` prints
   the field without the added newline, so `cmp` against the file you sent
-  answers exactly: `… | jq -j .description | cmp -s - sent.md`.
+  answers exactly: `… | jq -j .description | cmp - sent.md` prints nothing
+  when both are identical and the first differing byte otherwise.
 
 ### Issue templates are not optional furniture
 
