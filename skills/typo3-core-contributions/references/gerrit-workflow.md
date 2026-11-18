@@ -645,8 +645,9 @@ Added test case for empty string input in Tests/Unit/IndexerTest.php
 Findings go into comments, never into the `message` field alone. A `ReviewInput` that carries only `message` becomes a change message in the history: nobody can reply to it in a thread or mark it resolved, and only a Gerrit admin can delete it. Put each finding on the line it is about, and anything without a line under `/PATCHSET_LEVEL`. `unresolved: true` keeps the thread open until the author answers.
 
 ```bash
-# Fetch the patch set you review and read the lines there; line numbers refer to the file in that patch set
+# Line numbers refer to the file in the patch set you comment on: read the lines there
 git fetch origin refs/changes/<NN>/<change>/<patchset>
+git show FETCH_HEAD:<path> | grep -nF '<text of the line>'
 
 # finding-1.md, finding-2.md and summary.md hold the texts, written beforehand
 jq -n --rawfile a finding-1.md --rawfile b finding-2.md --rawfile s summary.md '{comments: {
