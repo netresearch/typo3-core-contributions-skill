@@ -59,6 +59,7 @@ Read ALL failing job logs, never guess; fix everything in one patchset. Locally:
 | Mark ready | Gerrit UI "Start Review", or `git push origin HEAD:refs/for/main%ready` on a new patch set |
 | Rebase | `git fetch origin && git rebase origin/main` |
 | Cherry-pick patch | `git fetch origin refs/changes/XX/NNNNN/N && git cherry-pick FETCH_HEAD` |
+| Review another's change | findings as `comments` (file + line, or `/PATCHSET_LEVEL`) with `unresolved: true`, never `message` alone; `references/gerrit-workflow.md` § Reviewing Someone Else's Change |
 | Install hook | `cp Build/git-hooks/commit-msg .git/hooks/ && chmod +x .git/hooks/commit-msg` |
 | Fix email mismatch | `GIT_COMMITTER_EMAIL="registered@email" git commit --amend --no-edit` |
 | Forge API | `${CLAUDE_SKILL_DIR}/scripts/create-forge-issue.sh`, `references/forge-api.md` |
