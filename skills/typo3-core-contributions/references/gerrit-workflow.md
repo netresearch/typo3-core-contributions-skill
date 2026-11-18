@@ -640,6 +640,28 @@ Added in PS3. Also added return type hints throughout.
 Added test case for empty string input in Tests/Unit/IndexerTest.php
 ```
 
+### Reviewing Someone Else's Change
+
+Findings go into comments, never into the `message` field alone. A `ReviewInput` that carries only `message` becomes a change message in the history: nobody can reply to it in a thread or mark it resolved, and only a Gerrit admin can delete it. Put each finding on the line it is about, and anything without a line under `/PATCHSET_LEVEL`. `unresolved: true` keeps the thread open until the author answers.
+
+```bash
+# Line numbers refer to the file in the patch set you comment on: read the lines there
+git fetch origin refs/changes/<NN>/<change>/<patchset>
+git show FETCH_HEAD:<path> | grep -nF '<text of the line>'
+# A finding on a deleted line refers to the parent: look it up there and set side: "PARENT" on the comment
+git show FETCH_HEAD~1:<path> | grep -nF '<text of the line>'
+
+# finding-1.md, finding-2.md and summary.md hold the texts, written beforehand
+jq -n --rawfile a finding-1.md --rawfile b finding-2.md --rawfile s summary.md '{comments: {
+  "typo3/sysext/core/ext_tables.sql": [{line: 33, message: $a, unresolved: true}],
+  "typo3/sysext/backend/Classes/Controller/PasskeyController.php": [{line: 155, message: $b, unresolved: true}],
+  "/PATCHSET_LEVEL": [{message: $s, unresolved: true}]
+}}' > review.json
+ssh -p 29418 <user>@review.typo3.org gerrit review --json <change>,<patchset> < review.json
+```
+
+Add `labels: {"Code-Review": 1}` only when you mean to vote. Read the result back: every finding must appear in `/changes/<change>/comments` under your account, with its patch set and `unresolved: true`; an inline finding also with its file and line, while a `/PATCHSET_LEVEL` comment has no line. A finding that shows up only in `/changes/<change>/messages` was posted as a change message; post it again as a comment.
+
 ### Getting More Reviews
 
 **If no reviews after 3-4 days**:
