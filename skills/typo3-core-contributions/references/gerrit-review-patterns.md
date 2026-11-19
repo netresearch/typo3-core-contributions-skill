@@ -354,7 +354,7 @@ Based on observed patterns:
 1. Search the Core for the code that writes the column (e.g. `Registry::set()` stores `serialize($value)` in `sys_registry.entry_value`)
 2. Reply with what you found: what produces the value, and what the test does with it
 3. Offer the replacement the reviewer asked for, and leave the choice to them
-4. Do not swap in an invented value (binary bytes, `foo`) to settle the comment: it moves the test away from a real case and does not change what the test proves
+4. Change the value only for what the test is meant to prove: if it must cover more (e.g. NUL bytes in a binary round trip), add that value as a second case beside the real one; do not swap in an invented value only to settle the comment
 
 ## Learning from Reviews
 
