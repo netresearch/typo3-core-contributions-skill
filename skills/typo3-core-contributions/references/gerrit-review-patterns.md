@@ -346,6 +346,16 @@ Based on observed patterns:
 4. Focus on getting main merged first
 5. Backport can be separate patch later
 
+### Situation 5: "Reviewer questions a test fixture value"
+
+**Response**: Find out where the value comes from before you change it. A value that the Core itself writes is a realistic fixture, and that is an argument to keep it.
+
+**Action**:
+1. Search the Core for the code that writes the column (e.g. `Registry::set()` stores `serialize($value)` in `sys_registry.entry_value`)
+2. Reply with what you found: what produces the value, and what the test does with it
+3. Offer the replacement the reviewer asked for, and leave the choice to them
+4. Do not swap in an invented value (binary bytes, `foo`) to settle the comment: it moves the test away from a real case and does not change what the test proves
+
 ## Learning from Reviews
 
 ### What to Extract from Reviews
