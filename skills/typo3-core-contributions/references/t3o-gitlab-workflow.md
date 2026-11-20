@@ -175,6 +175,33 @@ Do not use a `/dev/tcp` probe to decide any of this. It is blocked by the same
 sandbox and reports port 443 as closed on a host that `curl` reaches in the same
 second, so it produces a confident wrong answer about the network.
 
+### Reading the TER source
+
+The TER site is public: `services/t3o-sites/extensions.typo3.org/ter`,
+project id `4`, default branch `develop`; name that branch in raw-file and
+archive requests. Two access paths make the source look closed when it is not
+(measured 2026-11-20):
+
+- Use the host `git.typo3.org`. `gitlab.typo3.org` answers API calls with
+  `307` to `git.typo3.org`, so a `curl` without `-L` gets no JSON and reads
+  as "no such project".
+- Blob search (`/projects/4/search?scope=blobs`) answers `401` without a
+  token. Fetch the subtree as an archive and search it locally instead:
+
+```bash
+src=$(mktemp -d)
+curl -sSfL -o "$src/ter_rest.tar.gz" \
+  "https://git.typo3.org/api/v4/projects/4/repository/archive.tar.gz?sha=develop&path=extensions/ter_rest"
+tar -xzf "$src/ter_rest.tar.gz" -C "$src"
+grep -rn 'class VersionService' "$src"
+```
+
+Where the code sits: `extensions/ter_rest` holds the REST API (controllers,
+services, middleware), `extensions/ter_fe2` the domain model and
+`ext_tables.sql`, `extensions/ter` the site extension. Before writing that
+the source of a TYPO3 service is not available, run the request with `-L`
+against `git.typo3.org`.
+
 ## Check your access level before planning anything
 
 ```bash
